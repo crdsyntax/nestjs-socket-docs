@@ -42,7 +42,8 @@ export class SocketDocsModule {
 
       // Serve assets
       httpAdapter.get('/socket-docs/assets/:file', (req: any, res: any) => {
-        const filePath = path.join(uiDistPath, 'assets', req.params.file);
+        const assetPath = req.params.file;
+        const filePath = path.join(uiDistPath, 'assets', assetPath);
         if (fs.existsSync(filePath)) {
           res.status(200).sendFile(filePath);
         } else {

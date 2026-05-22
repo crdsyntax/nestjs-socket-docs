@@ -1,16 +1,17 @@
 {
   "name": "nestjs-socket-docs",
+  "version": "0.1.0",
   "private": true,
+  "description": "Monorepo for nestjs-socket-docs",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "postbuild": "cp -r packages/ui/dist/* packages/core/ui-dist/",
-    "test": "npm run test --workspaces"
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "publish:all": "npm publish --workspaces --access public"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "version": "0.1.0"
+    "typescript": "5.3.3"
+  }
 }

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BootstrapEditorService = void 0;
 const ts_morph_1 = require("ts-morph");
 class BootstrapEditorService {
+    project;
     constructor(tsconfigPath) {
         this.project = new ts_morph_1.Project({
             tsConfigFilePath: tsconfigPath,

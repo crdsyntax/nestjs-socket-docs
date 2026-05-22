@@ -10,3 +10,4 @@ export interface SocketDocsConfig {
     };
 }
 export declare const defineSocketDocsConfig: (config: SocketDocsConfig) => SocketDocsConfig;
+//# sourceMappingURL=config.d.ts.map

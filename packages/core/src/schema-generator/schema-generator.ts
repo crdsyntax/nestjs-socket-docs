@@ -1,29 +1,46 @@
-import { DECORATORS } from '@nestjs/swagger/dist/constants';
+const METADATA_KEYS = {
+  API_MODEL_PROPERTIES: 'swagger:apiModelProperties',
+  API_MODEL_PROPERTIES_ARRAY: 'swagger:apiModelPropertiesArray',
+};
 
 export class SchemaGenerator {
-  static generate(prototype: any) {
-    const props = Reflect.getMetadata(DECORATORS.API_MODEL_PROPERTIES_ARRAY, prototype) || [];
+  static generate(target: any): any {
+    if (!target) return { type: 'object' };
+    
+    const prototype = typeof target === 'function' ? target.prototype : target;
+    const props = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, prototype) || [];
+    
     const schema: any = {
       type: 'object',
       properties: {},
       required: [],
-      example: {}
     };
 
     props.forEach((prop: string) => {
       const propertyName = prop.startsWith(':') ? prop.slice(1) : prop;
-      const metadata = Reflect.getMetadata(DECORATORS.API_MODEL_PROPERTIES, prototype, propertyName);
+      const metadata = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, prototype, propertyName);
+      
       if (metadata) {
-        schema.properties[propertyName] = {
-          type: this.mapType(metadata.type),
-          description: metadata.description,
-          example: metadata.example,
-          required: metadata.required,
-        };
+        const propertySchema: any = {};
         
-        if (metadata.example !== undefined) {
-          schema.example[propertyName] = metadata.example;
+        if (metadata.enum) {
+          propertySchema.enum = Array.isArray(metadata.enum) 
+            ? metadata.enum 
+            : Object.values(metadata.enum);
         }
+
+        if (metadata.isArray) {
+          propertySchema.type = 'array';
+          propertySchema.items = this.resolveType(metadata.type);
+        } else {
+          Object.assign(propertySchema, this.resolveType(metadata.type));
+        }
+
+        if (metadata.description) propertySchema.description = metadata.description;
+        if (metadata.example !== undefined) propertySchema.example = metadata.example;
+        if (metadata.default !== undefined) propertySchema.default = metadata.default;
+
+        schema.properties[propertyName] = propertySchema;
 
         if (metadata.required) {
           schema.required.push(propertyName);
@@ -31,14 +48,21 @@ export class SchemaGenerator {
       }
     });
 
+    if (schema.required.length === 0) delete schema.required;
     return schema;
   }
 
-  private static mapType(type: any): string {
-    if (type === String) return 'string';
-    if (type === Number) return 'number';
-    if (type === Boolean) return 'boolean';
-    if (Array.isArray(type)) return 'array';
-    return 'object';
+  private static resolveType(type: any): any {
+    if (type === String) return { type: 'string' };
+    if (type === Number) return { type: 'number' };
+    if (type === Boolean) return { type: 'boolean' };
+    if (type === Date) return { type: 'string', format: 'date-time' };
+    
+    if (typeof type === 'function' && type.prototype) {
+      // Avoid infinite recursion if possible, but for now simple nested
+      return this.generate(type);
+    }
+    
+    return { type: 'object' };
   }
 }

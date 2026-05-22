@@ -1,0 +1,1 @@
+{"version":3,"file":"socket-event.decorator.d.ts","sourceRoot":"","sources":["../../src/decorators/socket-event.decorator.ts"],"names":[],"mappings":"AAGA,MAAM,WAAW,kBAAkB;IACjC,KAAK,EAAE,MAAM,CAAC;IACd,OAAO,CAAC,EAAE,MAAM,CAAC;IACjB,WAAW,CAAC,EAAE,MAAM,CAAC;IACrB,QAAQ,CAAC,EAAE,GAAG,CAAC;CAChB;AAED,eAAO,MAAM,WAAW,YAAa,MAAM,GAAG,kBAAkB,KAAG,eAGlE,CAAC"}

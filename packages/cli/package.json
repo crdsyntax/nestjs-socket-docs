@@ -1,11 +1,15 @@
 {
   "name": "@nestjs-socket-docs/cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "CLI for nestjs-socket-docs",
   "main": "dist/index.js",
   "bin": {
-    "socket-docs": "bin/socket-docs.js"
+    "socket-docs": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"

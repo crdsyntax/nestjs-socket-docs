@@ -4,13 +4,16 @@ exports.SocketExplorerService = void 0;
 const metadata_constants_1 = require("../constants/metadata.constants");
 const schema_generator_1 = require("../schema-generator/schema-generator");
 class SocketExplorerService {
+    modules;
+    metadataScanner;
+    reflector;
+    schema = {
+        gateways: []
+    };
     constructor(modules, metadataScanner, reflector) {
         this.modules = modules;
         this.metadataScanner = metadataScanner;
         this.reflector = reflector;
-        this.schema = {
-            gateways: []
-        };
     }
     getSchema() {
         return this.schema;
@@ -29,6 +32,7 @@ class SocketExplorerService {
             const { instance } = wrapper;
             const prototype = Object.getPrototypeOf(instance);
             const controllerMetadata = this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
+            // Try to get gateway metadata if it exists
             let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor);
             if (!gatewayMetadata) {
                 gatewayMetadata = {};

@@ -8,3 +8,4 @@ export declare class SocketExplorerService {
     getSchema(): any;
     explore(): void;
 }
+//# sourceMappingURL=socket-explorer.service.d.ts.map

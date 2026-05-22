@@ -1,4 +1,5 @@
 export declare class SchemaGenerator {
-    static generate(prototype: any): any;
-    private static mapType;
+    static generate(target: any): any;
+    private static resolveType;
 }
+//# sourceMappingURL=schema-generator.d.ts.map

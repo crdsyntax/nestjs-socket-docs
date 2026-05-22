@@ -15,6 +15,7 @@ export interface SocketDocsPayloadSchema {
 export interface SocketDocsEvent {
   event: string;
   summary?: string;
+  description?: string;
   payloadSchema?: SocketDocsPayloadSchema;
 }
 
