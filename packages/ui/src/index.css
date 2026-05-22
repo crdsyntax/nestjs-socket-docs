@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0b0f12;
+  --bg-secondary: #11161b;
+  --bg-surface: #161d24;
+  --bg-elevation: #1c242c;
+  --brand-emerald: #10b981;
+  --brand-emerald-dim: #142d26;
+  --brand-emerald-light: #34d399;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --border-subtle: #1e293b;
+  --method-post: #10b981;
+  --method-get: #3b82f6;
+  --method-patch: #f59e0b;
+  --method-delete: #ef4444;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+button {
+  font: inherit;
+}

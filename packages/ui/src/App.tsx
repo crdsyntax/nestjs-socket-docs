@@ -1,466 +1,175 @@
-import React from "react";
-import {
-  Activity,
-  ChevronDown,
-  ChevronRight,
-  Play,
-  X,
-  Terminal,
-  Zap,
-  RefreshCw,
-  Trash2,
-  CheckCircle2,
-  AlertCircle,
-  Hash,
-  Database,
-  Globe,
-  Settings,
-} from "lucide-react";
+import React, { useState } from "react";
+import GatewayPanel from "./components/GatewayPanel";
+import LogsPanel from "./components/LogsPanel";
+import LoadingScreen from "./components/LoadingScreen";
 import useSocketClient from "./hooks/useSocketClient";
 import useSocketDocs from "./hooks/useSocketDocs";
-import { SocketDocsEvent, SocketDocsGateway } from "./types";
+import { Play, RotateCcw, Settings, Sun } from "lucide-react";
 
 const App = () => {
-  const { data, payloads, expanded, setPayloads, toggleExpand } = useSocketDocs();
+  const { data, payloads, setPayloads } = useSocketDocs();
   const { connected, logs, connect, emitEvent, clearLogs } = useSocketClient();
+  const [activeGatewayIdx, setActiveGatewayIdx] = useState(0);
+  const [activeEventIdx, setActiveEventIdx] = useState(0);
 
-  if (!data)
-    return (
-      <div
-        style={{
-          display: "flex",
-          height: "100vh",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#020617",
-          color: "#38bdf8",
-        }}
-      >
-        <RefreshCw className="animate-spin" size={32} />
-        <span style={{ marginLeft: "15px", fontSize: "1.2rem" }}>
-          Loading Socket Contracts...
-        </span>
-      </div>
-    );
+  if (!data) {
+    return <LoadingScreen />;
+  }
+
+  const activeGateway = data.gateways[activeGatewayIdx];
+  const activeEvent = activeGateway?.events?.[activeEventIdx];
+  const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${activeEvent.event}` : "";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        backgroundColor: "#020617",
-        color: "#f8fafc",
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-        overflow: "hidden",
-      }}
-    >
-      {/* Sidebar: Gateways & Events */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: "450px",
-          borderRight: "1px solid #1e293b",
-          overflowY: "auto",
-          padding: "24px",
-          backgroundColor: "#0f172a",
-        }}
-      >
-        <header
-          style={{
-            marginBottom: "32px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#38bdf8",
-              padding: "8px",
-              borderRadius: "8px",
-            }}
-          >
-            <Activity color="#020617" size={24} />
+    <div className="flex h-screen overflow-hidden bg-bg-primary font-sans text-text-primary">
+      {/* SIDEBAR */}
+      <aside className="flex w-[300px] flex-col border-r border-border-subtle bg-bg-primary p-4">
+        <div className="mb-6 flex items-center gap-2">
+          <span className="text-xl text-brand-emerald">■</span>
+          <span className="text-base font-semibold">Socket Docs</span>
+          <span className="rounded bg-bg-surface px-1.5 py-0.5 text-[11px] text-text-secondary">v1.0.0</span>
+        </div>
+
+        <div className="relative mb-6">
+          <input
+            type="text"
+            className="w-full rounded-md border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary outline-none"
+            placeholder="Buscar eventos..."
+          />
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded bg-bg-surface px-1 py-0.5 text-[11px] text-text-muted">⌘K</span>
+        </div>
+
+        <div className="mb-3 flex justify-between text-[12px] font-semibold uppercase tracking-wider text-text-secondary">
+          <span>Gateways</span>
+          <span className="rounded bg-bg-surface px-1.5 py-0.5 text-[11px]">{data.gateways.length}</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <GatewayPanel
+            gateways={data.gateways}
+            activeGatewayIdx={activeGatewayIdx}
+            activeEventIdx={activeEventIdx}
+            onSelectGateway={setActiveGatewayIdx}
+            onSelectEvent={setActiveEventIdx}
+          />
+        </div>
+
+        <div className="mt-auto border-t border-border-subtle pt-4 text-[11px] text-text-muted">
+          <button className="mb-3 flex w-full items-center justify-center gap-2 rounded border border-border-subtle bg-bg-elevation py-2 text-text-primary transition hover:bg-border-subtle">
+            ↓ Exportar contrato
+          </button>
+          <p>Socket Docs v1.0.0</p>
+          <p>Hecho con 💚 para NestJS</p>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <main className="flex flex-1 flex-col overflow-y-auto bg-bg-secondary">
+        <div className="flex h-14 items-center justify-end gap-3 border-b border-border-subtle px-6">
+          <div className="flex items-center gap-2 rounded-full border border-border-subtle bg-bg-surface px-3 py-1.5 text-xs">
+            <div className={`h-2 w-2 rounded-full ${connected[activeGateway?.name] ? "bg-brand-emerald" : "bg-red-500"}`} />
+            <span>{connected[activeGateway?.name] ? "Conectado" : "Desconectado"}</span>
+            <span className="text-text-muted">{activeGateway?.path ?? "ws://localhost:3000"}</span>
           </div>
-          <div>
-            <h1 style={{ fontSize: "1.25rem", margin: 0, fontWeight: 800 }}>
-              Socket Docs
-            </h1>
-            <span style={{ fontSize: "0.7rem", color: "#64748b" }}>
-              NestJS WebSocket Documentation
-            </span>
-          </div>
-        </header>
-
-        {data.gateways.map((gw: SocketDocsGateway, idx: number) => (
-          <div
-            key={idx}
-            style={{
-              marginBottom: "32px",
-              backgroundColor: "#1e293b",
-              borderRadius: "12px",
-              border: "1px solid #334155",
-              overflow: "hidden",
-            }}
-          >
-            {/* Gateway Header */}
-            <div
-              style={{
-                padding: "16px",
-                borderBottom: "1px solid #334155",
-                backgroundColor: "rgba(15, 23, 42, 0.5)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <Database size={16} color="#38bdf8" />
-                  <h2 style={{ fontSize: "0.95rem", margin: 0 }}>{gw.name}</h2>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    fontSize: "0.75rem",
-                    color: "#94a3b8",
-                  }}
-                >
-                  <Globe size={12} />
-                  <span>{gw.namespace}</span>
-                  <Hash size={12} style={{ marginLeft: "8px" }} />
-                  <span>{gw.path}</span>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    fontSize: "0.7rem",
-                    fontWeight: "bold",
-                    color: connected[gw.name] ? "#10b981" : "#ef4444",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      backgroundColor: "currentColor",
-                      boxShadow: connected[gw.name]
-                        ? "0 0 8px #10b981"
-                        : "none",
-                    }}
-                  ></span>
-                  {connected[gw.name] ? "ONLINE" : "OFFLINE"}
-                </div>
-                <button
-                  onClick={() => connect(gw.name, gw.namespace, gw.path)}
-                  style={{
-                    padding: "6px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    backgroundColor: connected[gw.name] ? "#ef4444" : "#10b981",
-                    border: "none",
-                    color: "white",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {connected[gw.name] ? (
-                    <>
-                      <X size={14} /> Disconnect
-                    </>
-                  ) : (
-                    <>
-                      <Zap size={14} /> Connect
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Events List */}
-            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {gw.events.map((ev: SocketDocsEvent, eIdx: number) => {
-                const eventKey = `${gw.name}-${ev.event}`;
-                const isExpanded = expanded[eventKey];
-
-                return (
-                  <div
-                    key={eIdx}
-                    style={{
-                      backgroundColor: "#0f172a",
-                      borderRadius: "8px",
-                      border: "1px solid #334155",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      onClick={() => toggleExpand(eventKey)}
-                      style={{
-                        padding: "12px",
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        transition: "background 0.2s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e293b")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#0f172a")}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div
-                          style={{
-                            fontSize: "0.6rem",
-                            backgroundColor: "#38bdf8",
-                            color: "#020617",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          EVENT
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#e2e8f0" }}>
-                            {ev.event}
-                          </div>
-                          {ev.summary && (
-                            <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                              {ev.summary}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </div>
-
-                    {isExpanded && (
-                      <div
-                        style={{
-                          padding: "16px",
-                          borderTop: "1px solid #334155",
-                          backgroundColor: "rgba(2, 6, 23, 0.3)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          <label style={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: "bold" }}>
-                            PAYLOAD (JSON)
-                          </label>
-                          <Settings size={12} color="#475569" />
-                        </div>
-                        <textarea
-                          value={payloads[eventKey] ?? "{}"}
-                          onChange={(e) =>
-                            setPayloads({ ...payloads, [eventKey]: e.target.value })
-                          }
-                          style={{
-                            width: "100%",
-                            height: "120px",
-                            backgroundColor: "#020617",
-                            color: "#10b981",
-                            border: "1px solid #334155",
-                            borderRadius: "6px",
-                            padding: "12px",
-                            fontSize: "0.8rem",
-                            fontFamily: "monospace",
-                            resize: "vertical",
-                            outline: "none",
-                          }}
-                        />
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            emitEvent(gw.name, ev.event, payloads[eventKey] ?? "{}");
-                          }}
-                          style={{
-                            width: "100%",
-                            marginTop: "12px",
-                            padding: "8px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            backgroundColor: "#6366f1",
-                            border: "none",
-                            color: "white",
-                            fontWeight: 700,
-                            fontSize: "0.8rem",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "8px",
-                            transition: "filter 0.2s",
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.1)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
-                        >
-                          <Play size={14} fill="currentColor" /> Emit Event
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Content: Real-time Logs */}
-      <div
-        style={{
-          width: "35%",
-          minWidth: "380px",
-          display: "flex",
-          flexDirection: "column",
-          backgroundColor: "#020617",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid #1e293b",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            backgroundColor: "#0f172a",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Terminal size={18} color="#38bdf8" />
-            <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700 }}>
-              Event Monitor
-            </h3>
-          </div>
-          <button
-            onClick={clearLogs}
-            style={{
-              background: "transparent",
-              border: "1px solid #334155",
-              color: "#94a3b8",
-              padding: "4px 10px",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "0.7rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            <Trash2 size={12} /> Clear
+          <select className="rounded-md border border-border-subtle bg-bg-surface px-3 py-1.5 text-xs text-text-primary outline-none">
+            <option>{activeGateway?.namespace ?? "/"}</option>
+          </select>
+          <button className="flex h-8 w-8 items-center justify-center rounded border border-border-subtle bg-bg-surface text-text-primary transition hover:bg-border-subtle">
+            <Sun size={14} />
+          </button>
+          <button className="flex h-8 w-8 items-center justify-center rounded border border-border-subtle bg-bg-surface text-text-primary transition hover:bg-border-subtle">
+            <Settings size={14} />
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-          {logs.length === 0 && (
-            <div
-              style={{
-                color: "#334155",
-                textAlign: "center",
-                marginTop: "64px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <Activity size={48} strokeWidth={1} />
-              <span style={{ fontSize: "0.85rem" }}>
-                Listening for incoming events...
-              </span>
-            </div>
-          )}
-          {logs.map((log) => (
-            <div
-              key={log.id}
-              style={{
-                marginBottom: "20px",
-                borderLeft: `2px solid ${
-                  log.type === "sent"
-                    ? "#6366f1"
-                    : log.type === "received"
-                    ? "#10b981"
-                    : "#ef4444"
-                }`,
-                paddingLeft: "16px",
-                animation: "slideIn 0.3s ease-out",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "0.7rem",
-                  marginBottom: "6px",
-                }}
+        <div className="mx-auto w-full max-w-[1200px] p-6">
+          <div className="mb-4 flex gap-2 text-sm text-text-secondary">
+            <span>{activeGateway?.name ?? "..."}</span> / <span>events</span> / <span className="font-medium text-text-primary">{activeEvent?.event ?? "..."}</span>
+          </div>
+
+          <div className="mb-2 flex items-center gap-3">
+            <span className="rounded bg-brand-emerald-dim px-2 py-1 font-mono text-sm font-bold text-brand-emerald">EVENT</span>
+            <span className="font-mono text-xl font-semibold">{activeEvent?.event}</span>
+            <span className="text-sm text-text-secondary">{activeEvent?.summary}</span>
+          </div>
+
+          <p className="mb-6 leading-relaxed text-text-secondary">
+            {activeEvent?.description ?? "No description provided for this event."}
+          </p>
+
+          {/* Parameters Panel */}
+          <div className="mb-5 overflow-hidden rounded-lg border border-border-subtle bg-bg-surface">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-bg-surface/50 px-4 py-3">
+              <span className="text-[13px] font-semibold">Parameters</span>
+              <button
+                onClick={() => connect(activeGateway.name, activeGateway.namespace, activeGateway.path)}
+                className="rounded bg-brand-emerald px-3 py-1 text-[12px] font-semibold text-bg-primary transition hover:bg-brand-emerald-light"
               >
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  {log.type === "received" && <CheckCircle2 size={12} color="#10b981" />}
-                  {log.type === "error" && <AlertCircle size={12} color="#ef4444" />}
-                  <span
-                    style={{
-                      fontWeight: "bold",
-                      color:
-                        log.type === "sent"
-                          ? "#818cf8"
-                          : log.type === "received"
-                          ? "#34d399"
-                          : "#f87171",
-                    }}
-                  >
-                    {log.type.toUpperCase()}
-                  </span>
-                  <span style={{ color: "#e2e8f0" }}>{log.message}</span>
-                </div>
-                <span style={{ color: "#475569" }}>{log.timestamp}</span>
-              </div>
-              {log.data != null && (
-                <pre
-                  style={{
-                    margin: 0,
-                    backgroundColor: "#0f172a",
-                    border: "1px solid #1e293b",
-                    padding: "12px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    color: "#cbd5e1",
-                    overflowX: "auto",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-all",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {JSON.stringify(log.data, null, 2)}
-                </pre>
-              )}
+                {connected[activeGateway.name] ? "Reconnect" : "Connect"}
+              </button>
             </div>
-          ))}
+            <div className="p-4 italic text-text-secondary">
+              No parameters defined
+            </div>
+          </div>
+
+          {/* Request Body Panel */}
+          <div className="mb-5 overflow-hidden rounded-lg border border-border-subtle bg-bg-surface">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-bg-surface/50 px-4 py-3">
+              <span className="text-[13px] font-semibold">
+                Request body <span className="text-[11px] text-red-400">required</span>
+              </span>
+              <select className="rounded border border-border-subtle bg-bg-surface px-2 py-0.5 text-xs">
+                <option>application/json</option>
+              </select>
+            </div>
+            <div className="p-4">
+              <div className="mb-3 flex gap-4 border-b border-border-subtle pb-2 text-[13px]">
+                <span className="cursor-pointer border-b-2 border-brand-emerald pb-1.5 text-brand-emerald">Example Value</span>
+                <span className="cursor-pointer pb-1.5 text-text-secondary">Schema</span>
+              </div>
+              <textarea
+                value={payloads[eventKey] ?? "{}"}
+                onChange={(e) => setPayloads({ ...payloads, [eventKey]: e.target.value })}
+                className="w-full rounded border border-border-subtle bg-bg-primary p-4 font-mono text-[13px] leading-relaxed text-text-primary outline-none focus:border-brand-emerald"
+                rows={6}
+              />
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={() => emitEvent(activeGateway.name, activeEvent.event, payloads[eventKey] ?? "{}")}
+                  className="flex items-center gap-2 rounded bg-brand-emerald px-4 py-2 text-[13px] font-semibold text-bg-primary transition hover:bg-brand-emerald-light"
+                >
+                  <Play size={14} /> Enviar evento
+                </button>
+                <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-text-secondary">
+                  <input type="checkbox" className="rounded border-border-subtle bg-bg-surface" /> Incluir ACK
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Realtime Panel */}
+          <div className="mt-6 overflow-hidden rounded-lg border border-border-subtle bg-bg-surface">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${connected[activeGateway?.name] ? "animate-pulse bg-brand-emerald" : "bg-text-muted"}`} />
+                <span className="text-[13px] font-semibold">Respuesta en tiempo real</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={clearLogs} className="flex items-center gap-1.5 rounded border border-border-subtle bg-bg-elevation px-2 py-1 text-[12px] transition hover:bg-border-subtle">
+                  <RotateCcw size={12} /> Limpiar
+                </button>
+                <button className="rounded border border-border-subtle bg-bg-elevation px-2 py-1 text-[12px] transition hover:bg-border-subtle">
+                  Pausar
+                </button>
+              </div>
+            </div>
+            <div className="min-h-[200px] border-t border-border-subtle">
+              <LogsPanel logs={logs} onClear={clearLogs} />
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
