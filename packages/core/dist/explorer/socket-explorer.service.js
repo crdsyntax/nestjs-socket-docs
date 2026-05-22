@@ -13,6 +13,7 @@ exports.SocketExplorerService = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const metadata_constants_1 = require("../constants/metadata.constants");
+const schema_generator_1 = require("../schema-generator/schema-generator");
 let SocketExplorerService = class SocketExplorerService {
     constructor(discoveryService, metadataScanner, reflector) {
         this.discoveryService = discoveryService;
@@ -39,7 +40,11 @@ let SocketExplorerService = class SocketExplorerService {
                     console.log(`Found event: ${eventMetadata.event} in ${instance.constructor.name}`);
                     const payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, instance, methodName);
                     if (payloadMetadata) {
-                        console.log(`Payload for ${methodName}:`, payloadMetadata);
+                        const dto = payloadMetadata[0];
+                        if (dto && dto.prototype) {
+                            const schema = schema_generator_1.SchemaGenerator.generate(dto.prototype);
+                            console.log(`Schema for ${methodName}:`, JSON.stringify(schema, null, 2));
+                        }
                     }
                 }
             });

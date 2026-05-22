@@ -1,0 +1,24 @@
+{
+  "name": "@nestjs-socket-docs/cli",
+  "version": "0.0.1",
+  "description": "CLI for nestjs-socket-docs",
+  "main": "dist/index.js",
+  "bin": {
+    "socket-docs": "bin/socket-docs.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "ts-morph": "^20.0.0",
+    "chalk": "^4.1.2",
+    "fs-extra": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/fs-extra": "^11.0.0",
+    "typescript": "^5.0.0"
+  }
+}

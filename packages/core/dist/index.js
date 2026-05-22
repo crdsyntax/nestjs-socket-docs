@@ -15,8 +15,10 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./constants/metadata.constants"), exports);
+__exportStar(require("./constants/config"), exports);
 __exportStar(require("./decorators/socket-controller.decorator"), exports);
 __exportStar(require("./decorators/socket-event.decorator"), exports);
 __exportStar(require("./decorators/socket-payload.decorator"), exports);
 __exportStar(require("./explorer/socket-explorer.service"), exports);
+__exportStar(require("./socket-docs.module"), exports);
 //# sourceMappingURL=index.js.map

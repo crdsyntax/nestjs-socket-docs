@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { SOCKET_CONTROLLER_METADATA, SOCKET_EVENT_METADATA, SOCKET_PAYLOAD_METADATA } from '../constants/metadata.constants';
+import { SchemaGenerator } from '../schema-generator/schema-generator';
 
 @Injectable()
 export class SocketExplorerService implements OnModuleInit {
@@ -35,7 +36,11 @@ export class SocketExplorerService implements OnModuleInit {
             console.log(`Found event: ${eventMetadata.event} in ${instance.constructor.name}`);
             const payloadMetadata = Reflect.getMetadata(SOCKET_PAYLOAD_METADATA, instance, methodName);
             if (payloadMetadata) {
-              console.log(`Payload for ${methodName}:`, payloadMetadata);
+              const dto = payloadMetadata[0]; // Assume first param for now
+              if (dto && dto.prototype) {
+                const schema = SchemaGenerator.generate(dto.prototype);
+                console.log(`Schema for ${methodName}:`, JSON.stringify(schema, null, 2));
+              }
             }
           }
         }
