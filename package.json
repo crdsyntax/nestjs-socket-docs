@@ -1,11 +1,12 @@
 {
-  "name": "nestjs-socket-docs-monorepo",
+  "name": "nestjs-socket-docs",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces",
+    "postbuild": "cp -r packages/ui/dist/* packages/core/ui-dist/",
     "test": "npm run test --workspaces"
   },
   "devDependencies": {

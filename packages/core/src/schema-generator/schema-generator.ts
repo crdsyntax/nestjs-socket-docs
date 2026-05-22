@@ -7,19 +7,26 @@ export class SchemaGenerator {
       type: 'object',
       properties: {},
       required: [],
+      example: {}
     };
 
     props.forEach((prop: string) => {
-      const metadata = Reflect.getMetadata(DECORATORS.API_MODEL_PROPERTIES, prototype, prop.slice(1));
+      const propertyName = prop.startsWith(':') ? prop.slice(1) : prop;
+      const metadata = Reflect.getMetadata(DECORATORS.API_MODEL_PROPERTIES, prototype, propertyName);
       if (metadata) {
-        schema.properties[prop.slice(1)] = {
+        schema.properties[propertyName] = {
           type: this.mapType(metadata.type),
           description: metadata.description,
           example: metadata.example,
           required: metadata.required,
         };
+        
+        if (metadata.example !== undefined) {
+          schema.example[propertyName] = metadata.example;
+        }
+
         if (metadata.required) {
-          schema.required.push(prop.slice(1));
+          schema.required.push(propertyName);
         }
       }
     });

@@ -1,61 +1,67 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SocketExplorerService = void 0;
-const common_1 = require("@nestjs/common");
-const core_1 = require("@nestjs/core");
 const metadata_constants_1 = require("../constants/metadata.constants");
 const schema_generator_1 = require("../schema-generator/schema-generator");
-let SocketExplorerService = class SocketExplorerService {
-    constructor(discoveryService, metadataScanner, reflector) {
-        this.discoveryService = discoveryService;
+class SocketExplorerService {
+    constructor(modules, metadataScanner, reflector) {
+        this.modules = modules;
         this.metadataScanner = metadataScanner;
         this.reflector = reflector;
+        this.schema = {
+            gateways: []
+        };
     }
-    onModuleInit() {
-        this.explore();
+    getSchema() {
+        return this.schema;
     }
     explore() {
-        const wrappers = this.discoveryService.getProviders();
-        const socketControllers = wrappers.filter(wrapper => {
+        const modulesArray = [...this.modules.values()];
+        const providers = modulesArray.flatMap(module => [...module.providers.values()]);
+        const socketControllers = providers.filter(wrapper => {
             const { instance } = wrapper;
-            if (!instance)
+            if (!instance || !instance.constructor)
                 return false;
             return this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor);
         });
+        console.log(`🔍 Scanning ${socketControllers.length} socket controllers...`);
         socketControllers.forEach(wrapper => {
             const { instance } = wrapper;
             const prototype = Object.getPrototypeOf(instance);
+            const controllerMetadata = this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
+            let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor);
+            if (!gatewayMetadata) {
+                gatewayMetadata = {};
+            }
+            const gatewaySchema = {
+                name: instance.constructor.name,
+                namespace: controllerMetadata.name || gatewayMetadata.namespace || '/',
+                path: gatewayMetadata.path || '/socket.io',
+                description: controllerMetadata.description,
+                events: []
+            };
             this.metadataScanner.scanFromPrototype(instance, prototype, methodName => {
                 const eventMetadata = this.reflector.get(metadata_constants_1.SOCKET_EVENT_METADATA, instance[methodName]);
                 if (eventMetadata) {
-                    console.log(`Found event: ${eventMetadata.event} in ${instance.constructor.name}`);
+                    const eventEntry = {
+                        event: eventMetadata.event,
+                        summary: eventMetadata.summary,
+                        description: eventMetadata.description,
+                        methodName
+                    };
                     const payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, instance, methodName);
-                    if (payloadMetadata) {
-                        const dto = payloadMetadata[0];
+                    if (payloadMetadata && Array.isArray(payloadMetadata)) {
+                        const dto = payloadMetadata.find(d => d !== undefined && d !== null);
                         if (dto && dto.prototype) {
-                            const schema = schema_generator_1.SchemaGenerator.generate(dto.prototype);
-                            console.log(`Schema for ${methodName}:`, JSON.stringify(schema, null, 2));
+                            eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto.prototype);
                         }
                     }
+                    gatewaySchema.events.push(eventEntry);
                 }
             });
+            this.schema.gateways.push(gatewaySchema);
         });
     }
-};
+}
 exports.SocketExplorerService = SocketExplorerService;
-exports.SocketExplorerService = SocketExplorerService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [core_1.DiscoveryService,
-        core_1.MetadataScanner,
-        core_1.Reflector])
-], SocketExplorerService);
 //# sourceMappingURL=socket-explorer.service.js.map

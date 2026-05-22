@@ -1,50 +1,82 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
+import { MetadataScanner, Reflector } from '@nestjs/core';
 import { SOCKET_CONTROLLER_METADATA, SOCKET_EVENT_METADATA, SOCKET_PAYLOAD_METADATA } from '../constants/metadata.constants';
 import { SchemaGenerator } from '../schema-generator/schema-generator';
 
-@Injectable()
-export class SocketExplorerService implements OnModuleInit {
+export class SocketExplorerService {
+  private schema: any = {
+    gateways: []
+  };
+
   constructor(
-    private readonly discoveryService: DiscoveryService,
+    private readonly modules: Map<any, any>,
     private readonly metadataScanner: MetadataScanner,
     private readonly reflector: Reflector,
   ) {}
 
-  onModuleInit() {
-    this.explore();
+  getSchema() {
+    return this.schema;
   }
 
   explore() {
-    const wrappers = this.discoveryService.getProviders();
-    const socketControllers = wrappers.filter(wrapper => {
+    const modulesArray = [...this.modules.values()];
+    const providers = modulesArray.flatMap(module => [...module.providers.values()]);
+    
+    const socketControllers = providers.filter(wrapper => {
       const { instance } = wrapper;
-      if (!instance) return false;
+      if (!instance || !instance.constructor) return false;
       return this.reflector.get(SOCKET_CONTROLLER_METADATA, instance.constructor);
     });
+
+    console.log(`🔍 Scanning ${socketControllers.length} socket controllers...`);
 
     socketControllers.forEach(wrapper => {
       const { instance } = wrapper;
       const prototype = Object.getPrototypeOf(instance);
       
+      const controllerMetadata = this.reflector.get(SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
+      
+      // Try to get gateway metadata if it exists
+      let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor);
+      if (!gatewayMetadata) {
+        gatewayMetadata = {};
+      }
+      
+      const gatewaySchema: any = {
+        name: instance.constructor.name,
+        namespace: controllerMetadata.name || gatewayMetadata.namespace || '/',
+        path: gatewayMetadata.path || '/socket.io',
+        description: controllerMetadata.description,
+        events: []
+      };
+
+
       this.metadataScanner.scanFromPrototype(
         instance,
         prototype,
         methodName => {
           const eventMetadata = this.reflector.get(SOCKET_EVENT_METADATA, instance[methodName]);
           if (eventMetadata) {
-            console.log(`Found event: ${eventMetadata.event} in ${instance.constructor.name}`);
+            const eventEntry: any = {
+              event: eventMetadata.event,
+              summary: eventMetadata.summary,
+              description: eventMetadata.description,
+              methodName
+            };
+
             const payloadMetadata = Reflect.getMetadata(SOCKET_PAYLOAD_METADATA, instance, methodName);
-            if (payloadMetadata) {
-              const dto = payloadMetadata[0]; // Assume first param for now
+            if (payloadMetadata && Array.isArray(payloadMetadata)) {
+              const dto = payloadMetadata.find(d => d !== undefined && d !== null);
               if (dto && dto.prototype) {
-                const schema = SchemaGenerator.generate(dto.prototype);
-                console.log(`Schema for ${methodName}:`, JSON.stringify(schema, null, 2));
+                eventEntry.payloadSchema = SchemaGenerator.generate(dto.prototype);
               }
             }
+            
+            gatewaySchema.events.push(eventEntry);
           }
         }
       );
+      
+      this.schema.gateways.push(gatewaySchema);
     });
   }
 }

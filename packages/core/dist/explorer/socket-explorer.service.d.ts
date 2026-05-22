@@ -1,10 +1,10 @@
-import { OnModuleInit } from '@nestjs/common';
-import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-export declare class SocketExplorerService implements OnModuleInit {
-    private readonly discoveryService;
+import { MetadataScanner, Reflector } from '@nestjs/core';
+export declare class SocketExplorerService {
+    private readonly modules;
     private readonly metadataScanner;
     private readonly reflector;
-    constructor(discoveryService: DiscoveryService, metadataScanner: MetadataScanner, reflector: Reflector);
-    onModuleInit(): void;
+    private schema;
+    constructor(modules: Map<any, any>, metadataScanner: MetadataScanner, reflector: Reflector);
+    getSchema(): any;
     explore(): void;
 }
