@@ -33,12 +33,17 @@ const useSocketClient = () => {
 
     const socket = io(namespace, {
       path: path ?? "/socket.io",
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
+      forceNew: true,
     });
 
     socket.on("connect", () => {
       setConnected((prev) => ({ ...prev, [gatewayName]: true }));
       addLog("received", `Connected to ${namespace}`);
+    });
+
+    socket.on("connect_error", (err) => {
+      addLog("error", `Connection Error: ${err.message}`);
     });
 
     socket.on("disconnect", () => {

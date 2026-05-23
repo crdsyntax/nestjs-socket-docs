@@ -25,7 +25,8 @@ class SocketExplorerService {
             const { instance } = wrapper;
             if (!instance || !instance.constructor)
                 return false;
-            return this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor);
+            return (this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) ||
+                this.reflector.get('websockets:is_gateway', instance.constructor));
         });
         console.log(`🔍 Scanning ${socketControllers.length} socket controllers...`);
         socketControllers.forEach(wrapper => {
@@ -46,18 +47,31 @@ class SocketExplorerService {
             };
             this.metadataScanner.scanFromPrototype(instance, prototype, methodName => {
                 const eventMetadata = this.reflector.get(metadata_constants_1.SOCKET_EVENT_METADATA, instance[methodName]);
-                if (eventMetadata) {
+                const subscribeMetadata = this.reflector.get('websockets:subscribe_message', instance[methodName]);
+                if (eventMetadata || subscribeMetadata) {
+                    const eventName = eventMetadata?.event || subscribeMetadata;
                     const eventEntry = {
-                        event: eventMetadata.event,
-                        summary: eventMetadata.summary,
-                        description: eventMetadata.description,
+                        event: eventName,
+                        summary: eventMetadata?.summary || `Event: ${eventName}`,
+                        description: eventMetadata?.description,
                         methodName
                     };
-                    const payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, instance, methodName);
+                    // Try to get payload from custom decorator or design:paramtypes
+                    let payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, instance, methodName);
+                    // Fallback to design:paramtypes if no custom payload metadata
+                    if (!payloadMetadata) {
+                        const paramTypes = Reflect.getMetadata('design:paramtypes', instance, methodName);
+                        if (paramTypes && Array.isArray(paramTypes)) {
+                            // Usually the first or second param is the body
+                            payloadMetadata = paramTypes;
+                        }
+                    }
                     if (payloadMetadata && Array.isArray(payloadMetadata)) {
-                        const dto = payloadMetadata.find(d => d !== undefined && d !== null);
-                        if (dto && dto.prototype) {
-                            eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto.prototype);
+                        // We look for the first non-primitive type that could be a DTO
+                        const dto = payloadMetadata.find(d => d && typeof d === 'function' &&
+                            ![String, Number, Boolean, Array, Object, Date].includes(d));
+                        if (dto) {
+                            eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
                         }
                     }
                     gatewaySchema.events.push(eventEntry);

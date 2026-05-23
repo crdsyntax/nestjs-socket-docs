@@ -32,6 +32,9 @@ export class SocketDocsModule {
       const uiDistPath = path.resolve(__dirname, '../ui-dist');
       
       httpAdapter.get('/socket-docs', (req: any, res: any) => {
+        if (!req.url.endsWith('/')) {
+          return res.redirect(301, req.url + '/');
+        }
         const indexPath = path.join(uiDistPath, 'index.html');
         if (fs.existsSync(indexPath)) {
           res.status(200).type('text/html').send(fs.readFileSync(indexPath, 'utf-8'));

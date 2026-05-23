@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const isLibrary = mode === 'library';
   
   return {
-    base: isLibrary ? '/' : '/socket-docs/',
+    base: isLibrary ? '/' : './',
     plugins: [react()],
     build: {
       outDir: isLibrary ? 'dist' : '../core/ui-dist',

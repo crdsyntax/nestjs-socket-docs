@@ -1,0 +1,32 @@
+export const translations = {
+  common: {
+    v1: "v1.0.0",
+    socketDocs: "Socket Docs",
+    gateways: "Gateways",
+    events: "eventos",
+    connected: "Conectado",
+    disconnected: "Desconectado",
+    searchPlaceholder: "Buscar eventos...",
+    exportContract: "Exportar contrato",
+    madeWith: "Hecho con 💚 para NestJS",
+  },
+  event: {
+    type: "EVENT",
+    parameters: "Parameters",
+    reconnect: "Reconnect",
+    connect: "Connect",
+    noParameters: "No parameters defined",
+    requestBody: "Request body",
+    required: "required",
+    exampleValue: "Example Value",
+    schema: "Schema",
+    sendEvent: "Enviar evento",
+    includeAck: "Incluir ACK",
+  },
+  realtime: {
+    title: "Respuesta en tiempo real",
+    clear: "Limpiar",
+    pause: "Pausar",
+    noLogs: "Envía un evento para ver la respuesta...",
+  }
+};

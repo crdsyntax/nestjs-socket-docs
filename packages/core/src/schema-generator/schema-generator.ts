@@ -31,9 +31,14 @@ export class SchemaGenerator {
 
         if (metadata.isArray) {
           propertySchema.type = 'array';
-          propertySchema.items = this.resolveType(metadata.type);
+          const itemSchema = this.resolveType(metadata.type);
+          propertySchema.items = itemSchema;
+          if (itemSchema.example !== undefined && metadata.example === undefined) {
+            propertySchema.example = [itemSchema.example];
+          }
         } else {
-          Object.assign(propertySchema, this.resolveType(metadata.type));
+          const typeSchema = this.resolveType(metadata.type);
+          Object.assign(propertySchema, typeSchema);
         }
 
         if (metadata.description) propertySchema.description = metadata.description;
@@ -41,6 +46,12 @@ export class SchemaGenerator {
         if (metadata.default !== undefined) propertySchema.default = metadata.default;
 
         schema.properties[propertyName] = propertySchema;
+        
+        // Build root example
+        if (propertySchema.example !== undefined) {
+          if (!schema.example) schema.example = {};
+          schema.example[propertyName] = propertySchema.example;
+        }
 
         if (metadata.required) {
           schema.required.push(propertyName);
