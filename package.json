@@ -4,11 +4,14 @@
   "private": true,
   "description": "Monorepo for nestjs-socket-docs",
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm test --workspaces --if-present",
-    "publish:all": "npm publish --workspaces --access public"
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "publish:all": "pnpm -r publish --access public"
   },
   "devDependencies": {
     "typescript": "5.3.3"
+  },
+  "dependencies": {
+    "changeset": "^0.2.6"
   }
 }

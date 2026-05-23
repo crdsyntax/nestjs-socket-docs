@@ -8,14 +8,15 @@ interface MainHeaderProps {
   namespace: string;
   theme: "dark" | "light";
   onToggleTheme: () => void;
+  onOpenSettings?: () => void;
 }
-
 const MainHeader = ({
   connected,
   gatewayPath,
   namespace,
   theme,
   onToggleTheme,
+  onOpenSettings,
 }: MainHeaderProps) => {
   return (
     <div className="flex h-14 items-center justify-end gap-3 border-b border-border-subtle px-6">
@@ -33,7 +34,10 @@ const MainHeader = ({
       >
         {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
       </button>
-      <button className="flex h-8 w-8 items-center justify-center rounded border border-border-subtle bg-bg-surface text-text-primary transition hover:bg-border-subtle">
+      <button 
+        onClick={onOpenSettings}
+        className="flex h-8 w-8 items-center justify-center rounded border border-border-subtle bg-bg-surface text-text-primary transition hover:bg-border-subtle"
+      >
         <Settings size={14} />
       </button>
     </div>

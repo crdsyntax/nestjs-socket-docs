@@ -1,13 +1,16 @@
-import { useRef, useState } from "react";
-import { io, Socket } from "socket.io-client";
+import { useState, useCallback, useEffect } from "react";
 import { ConnectedState, LogEntry, LogType } from "../types";
+import { socketService, SocketConfig } from "../services/socket.service";
 
-const useSocketClient = () => {
+export interface UseSocketClientOptions extends SocketConfig {
+  auth?: Record<string, any>;
+}
+
+const useSocketClient = (options: UseSocketClientOptions = {}) => {
   const [connected, setConnected] = useState<ConnectedState>({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const socketRef = useRef<Record<string, Socket>>({});
 
-  const addLog = (type: LogType, message: string, data?: unknown) => {
+  const addLog = useCallback((type: LogType, message: string, data?: unknown) => {
     setLogs((prev) =>
       [
         {
@@ -20,68 +23,64 @@ const useSocketClient = () => {
         ...prev,
       ].slice(0, 50),
     );
-  };
+  }, []);
 
-  const connect = (gatewayName: string, namespace: string, path?: string) => {
-    if (socketRef.current[gatewayName]) {
-      socketRef.current[gatewayName].disconnect();
-      delete socketRef.current[gatewayName];
-      setConnected((prev) => ({ ...prev, [gatewayName]: false }));
-      addLog("error", `Disconnected from ${namespace}`);
-      return;
-    }
+  const connect = useCallback((gatewayName: string, namespace: string, path?: string) => {
+    setConnected((prevConnected) => {
+      if (prevConnected[gatewayName]) {
+        socketService.disconnect(gatewayName);
+        addLog("error", `Disconnected from ${namespace}`);
+        return { ...prevConnected, [gatewayName]: false };
+      }
 
-    const socket = io(namespace, {
-      path: path ?? "/socket.io",
-      transports: ["polling", "websocket"],
-      forceNew: true,
+      const mergedOptions: SocketConfig = {
+        ...options,
+        options: {
+          path: path ?? "/socket.io",
+          auth: options.auth,
+          ...options.options,
+        }
+      };
+
+      socketService.connect(gatewayName, namespace, mergedOptions, {
+        onConnect: () => {
+          setConnected((curr) => ({ ...curr, [gatewayName]: true }));
+          addLog("received", `Connected to ${namespace}`);
+        },
+        onDisconnect: () => {
+          setConnected((curr) => ({ ...curr, [gatewayName]: false }));
+          addLog("error", `Disconnected from ${namespace}`);
+        },
+        onConnectError: (err) => {
+          setConnected((curr) => ({ ...curr, [gatewayName]: false }));
+          addLog("error", `Connection Error: ${err.message}`);
+        },
+        onAny: (event, ...args) => {
+          addLog("received", `Event: ${event}`, args);
+        },
+      });
+
+      return prevConnected; // State will be updated by callbacks
     });
+  }, [options, addLog]);
 
-    socket.on("connect", () => {
-      setConnected((prev) => ({ ...prev, [gatewayName]: true }));
-      addLog("received", `Connected to ${namespace}`);
-    });
-
-    socket.on("connect_error", (err) => {
-      addLog("error", `Connection Error: ${err.message}`);
-    });
-
-    socket.on("disconnect", () => {
-      setConnected((prev) => ({ ...prev, [gatewayName]: false }));
-      addLog("error", `Disconnected from ${namespace}`);
-    });
-
-    socket.onAny((event, ...args) => {
-      addLog("received", `Event: ${event}`, args);
-    });
-
-    socketRef.current[gatewayName] = socket;
-  };
-
-  const emitEvent = (gatewayName: string, event: string, payload: string) => {
-    const socket = socketRef.current[gatewayName];
-
-    if (!socket) {
-      alert("Connect first!");
-      return;
-    }
-
+  const emitEvent = useCallback((gatewayName: string, event: string, payload: string) => {
     try {
       const parsedPayload = JSON.parse(payload);
       addLog("sent", `Emitting ${event}`, parsedPayload);
 
-      socket.emit(event, parsedPayload, (ack: unknown) => {
+      socketService.emit(gatewayName, event, parsedPayload, (ack: unknown) => {
         addLog("received", `ACK for ${event}`, ack);
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Invalid JSON";
-      alert(`Invalid JSON: ${message}`);
+      console.error(`Emit error: ${message}`);
     }
-  };
+  }, [addLog]);
 
-  const clearLogs = () => {
+  const clearLogs = useCallback(() => {
     setLogs([]);
-  };
+  }, []);
 
   return {
     connected,

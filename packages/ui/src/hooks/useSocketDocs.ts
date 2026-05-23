@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   ExpandedState,
   PayloadMap,
   SocketDocsData,
 } from "../types";
+import { createApiService, ApiConfig } from "../services/api.service";
 
 const buildInitialPayloads = (data: SocketDocsData): PayloadMap => {
   const initialPayloads: PayloadMap = {};
@@ -21,20 +22,35 @@ const buildInitialPayloads = (data: SocketDocsData): PayloadMap => {
   return initialPayloads;
 };
 
-const useSocketDocs = () => {
+export interface UseSocketDocsOptions extends ApiConfig {}
+
+const useSocketDocs = (options: UseSocketDocsOptions = {}) => {
   const [data, setData] = useState<SocketDocsData | null>(null);
   const [payloads, setPayloads] = useState<PayloadMap>({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const api = useMemo(() => createApiService(options), [options.baseUrl, options.jsonPath]);
 
   useEffect(() => {
-    fetch("/socket-docs/json")
-      .then((res) => res.json() as Promise<SocketDocsData>)
+    // If in standalone mode and baseUrl hasn't been configured (still points to UI origin),
+    // we might want to skip or handle it gracefully. 
+    // But for now, let it attempt and fail so the user sees the error modal and can configure it.
+    
+    setLoading(true);
+    api.fetchDocs()
       .then((result) => {
         setData(result);
         setPayloads(buildInitialPayloads(result));
+        setError(null);
       })
-      .catch(console.error);
-  }, []);
+      .catch((err) => {
+        console.error("Failed to fetch socket docs:", err);
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+      })
+      .finally(() => setLoading(false));
+  }, [api]);
 
   const toggleExpand = (key: string) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -44,6 +60,8 @@ const useSocketDocs = () => {
     data,
     payloads,
     expanded,
+    loading,
+    error,
     setPayloads,
     toggleExpand,
   };
