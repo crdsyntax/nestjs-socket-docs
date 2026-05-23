@@ -1,1 +1,1 @@
-{"version":3,"file":"schema-generator.d.ts","sourceRoot":"","sources":["../../src/schema-generator/schema-generator.ts"],"names":[],"mappings":"AAKA,qBAAa,eAAe;IAC1B,MAAM,CAAC,QAAQ,CAAC,MAAM,EAAE,GAAG,GAAG,GAAG;IA2DjC,OAAO,CAAC,MAAM,CAAC,WAAW;CAa3B"}
+{"version":3,"file":"schema-generator.d.ts","sourceRoot":"","sources":["../../src/schema-generator/schema-generator.ts"],"names":[],"mappings":"AAOA,qBAAa,eAAe;IAC1B;;OAEG;IACH,MAAM,CAAC,QAAQ,CAAC,MAAM,EAAE,GAAG,EAAE,OAAO,GAAE,GAAG,CAAC,GAAG,CAAa,GAAG,GAAG;IAoJhE,OAAO,CAAC,MAAM,CAAC,iBAAiB;IAYhC,OAAO,CAAC,MAAM,CAAC,WAAW;CAoB3B"}

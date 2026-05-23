@@ -46,11 +46,25 @@ export class ASTScannerService {
       return arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
     } else if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
       const obj = arg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
-      const nsProp = obj.getProperty('namespace');
-      if (nsProp && nsProp.getKind() === SyntaxKind.PropertyAssignment) {
-        const init = nsProp.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
+      const isSocketController = decorator.getName() === 'SocketController';
+      const propName = isSocketController ? 'name' : 'namespace';
+      
+      const prop = obj.getProperty(propName);
+      if (prop && prop.getKind() === SyntaxKind.PropertyAssignment) {
+        const init = prop.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
         if (init && init.getKind() === SyntaxKind.StringLiteral) {
           return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+        }
+      }
+
+      // Fallback for WebSocketGateway if name was used or if namespace is missing
+      if (!isSocketController) {
+        const altProp = obj.getProperty('namespace');
+        if (altProp && altProp.getKind() === SyntaxKind.PropertyAssignment) {
+           const init = altProp.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
+           if (init && init.getKind() === SyntaxKind.StringLiteral) {
+             return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+           }
         }
       }
     }

@@ -26,15 +26,15 @@ class SocketExplorerService {
             if (!instance || !instance.constructor)
                 return false;
             return (this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) ||
-                this.reflector.get('websockets:is_gateway', instance.constructor));
+                this.reflector.get('websockets:is_gateway', instance.constructor) ||
+                Reflect.getMetadata('websockets:is_gateway', instance.constructor));
         });
-        console.log(`🔍 Scanning ${socketControllers.length} socket controllers...`);
         socketControllers.forEach(wrapper => {
             const { instance } = wrapper;
             const prototype = Object.getPrototypeOf(instance);
             const controllerMetadata = this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
-            // Try to get gateway metadata if it exists
-            let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor);
+            let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor) ||
+                Reflect.getMetadata('websockets:gateway_metadata', instance.constructor);
             if (!gatewayMetadata) {
                 gatewayMetadata = {};
             }
@@ -46,32 +46,56 @@ class SocketExplorerService {
                 events: []
             };
             this.metadataScanner.scanFromPrototype(instance, prototype, methodName => {
-                const eventMetadata = this.reflector.get(metadata_constants_1.SOCKET_EVENT_METADATA, instance[methodName]);
-                const subscribeMetadata = this.reflector.get('websockets:subscribe_message', instance[methodName]);
+                const method = instance[methodName];
+                const eventMetadata = this.reflector.get(metadata_constants_1.SOCKET_EVENT_METADATA, method) ||
+                    Reflect.getMetadata(metadata_constants_1.SOCKET_EVENT_METADATA, method);
+                const subscribeMetadata = this.reflector.get('websockets:subscribe_message', method) ||
+                    Reflect.getMetadata('websockets:subscribe_message', method);
                 if (eventMetadata || subscribeMetadata) {
                     const eventName = eventMetadata?.event || subscribeMetadata;
                     const eventEntry = {
                         event: eventName,
                         summary: eventMetadata?.summary || `Event: ${eventName}`,
                         description: eventMetadata?.description,
+                        emits: eventMetadata?.emits,
                         methodName
                     };
-                    // Try to get payload from custom decorator or design:paramtypes
-                    let payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, instance, methodName);
-                    // Fallback to design:paramtypes if no custom payload metadata
-                    if (!payloadMetadata) {
-                        const paramTypes = Reflect.getMetadata('design:paramtypes', instance, methodName);
-                        if (paramTypes && Array.isArray(paramTypes)) {
-                            // Usually the first or second param is the body
-                            payloadMetadata = paramTypes;
-                        }
+                    if (eventMetadata?.response) {
+                        eventEntry.responseSchema = schema_generator_1.SchemaGenerator.generate(eventMetadata.response);
                     }
-                    if (payloadMetadata && Array.isArray(payloadMetadata)) {
-                        // We look for the first non-primitive type that could be a DTO
-                        const dto = payloadMetadata.find(d => d && typeof d === 'function' &&
-                            ![String, Number, Boolean, Array, Object, Date].includes(d));
-                        if (dto) {
-                            eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
+                    // 0. Try to get payload from decorator option (payload: Dto)
+                    if (eventMetadata?.payload) {
+                        console.log(`[SocketDocs] Method ${methodName} - Found DTO via @SocketEvent({ payload })`);
+                        eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(eventMetadata.payload);
+                    }
+                    // 1. Try to get payload from custom decorator (SocketPayload)
+                    // Only if not already found via option
+                    if (!eventEntry.payloadSchema) {
+                        let payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, prototype, methodName);
+                        // 2. Try to find MessageBody parameter index
+                        const messageBodyIndex = Reflect.getMetadata('websockets:message_body', prototype, methodName);
+                        // 3. Fallback to design:paramtypes
+                        const paramTypes = Reflect.getMetadata('design:paramtypes', prototype, methodName);
+                        if (payloadMetadata && Array.isArray(payloadMetadata)) {
+                            const dto = payloadMetadata.find(d => d && typeof d === 'function' &&
+                                !this.isPrimitive(d) && !this.isSocketType(d));
+                            console.log(`[SocketDocs] Method ${methodName} - Found DTO via SocketPayload:`, dto?.name);
+                            if (dto)
+                                eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
+                        }
+                        else if (messageBodyIndex !== undefined && paramTypes && paramTypes[messageBodyIndex]) {
+                            const dto = paramTypes[messageBodyIndex];
+                            console.log(`[SocketDocs] Method ${methodName} - Found DTO via MessageBody:`, dto?.name);
+                            if (dto && typeof dto === 'function' && !this.isPrimitive(dto) && !this.isSocketType(dto)) {
+                                eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
+                            }
+                        }
+                        else if (paramTypes && Array.isArray(paramTypes)) {
+                            const dto = paramTypes.find(d => d && typeof d === 'function' &&
+                                !this.isPrimitive(d) && !this.isSocketType(d));
+                            console.log(`[SocketDocs] Method ${methodName} - Found DTO via design:paramtypes:`, dto?.name);
+                            if (dto)
+                                eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
                         }
                     }
                     gatewaySchema.events.push(eventEntry);
@@ -79,6 +103,15 @@ class SocketExplorerService {
             });
             this.schema.gateways.push(gatewaySchema);
         });
+    }
+    isPrimitive(type) {
+        return [String, Number, Boolean, Array, Object, Date].includes(type);
+    }
+    isSocketType(type) {
+        if (!type || !type.name)
+            return false;
+        const socketTypes = ['Socket', 'Server', 'Namespace', 'Adapter', 'EventEmitter'];
+        return socketTypes.includes(type.name);
     }
 }
 exports.SocketExplorerService = SocketExplorerService;

@@ -13,7 +13,7 @@ export class SocketService {
     config: SocketConfig = {},
     callbacks: {
       onConnect: () => void;
-      onDisconnect: () => void;
+      onDisconnect: (reason: string) => void;
       onConnectError: (err: Error) => void;
       onAny: (event: string, ...args: any[]) => void;
     }
@@ -26,6 +26,7 @@ export class SocketService {
     const socketOptions: Partial<ManagerOptions & SocketOptions> = {
       transports: ["polling", "websocket"],
       forceNew: true,
+      reconnection: true,
       ...config.options,
     };
 
@@ -33,7 +34,7 @@ export class SocketService {
 
     socket.on("connect", callbacks.onConnect);
     socket.on("connect_error", (err) => callbacks.onConnectError(err as Error));
-    socket.on("disconnect", callbacks.onDisconnect);
+    socket.on("disconnect", (reason) => callbacks.onDisconnect(reason));
     socket.onAny(callbacks.onAny);
 
     this.sockets[gatewayName] = socket;

@@ -17,6 +17,8 @@ export interface SocketDocsEvent {
   summary?: string;
   description?: string;
   payloadSchema?: SocketDocsPayloadSchema;
+  responseSchema?: any;
+  emits?: string;
 }
 
 export interface SocketDocsGateway {

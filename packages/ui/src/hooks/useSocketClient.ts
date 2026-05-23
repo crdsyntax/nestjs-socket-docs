@@ -26,43 +26,46 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
   }, []);
 
   const connect = useCallback((gatewayName: string, namespace: string, path?: string) => {
-    setConnected((prevConnected) => {
-      if (prevConnected[gatewayName]) {
-        socketService.disconnect(gatewayName);
-        addLog("error", `Disconnected from ${namespace}`);
-        return { ...prevConnected, [gatewayName]: false };
+    // If already connected, disconnect
+    if (connected[gatewayName]) {
+      socketService.disconnect(gatewayName);
+      setConnected((curr) => ({ ...curr, [gatewayName]: false }));
+      addLog("error", `Disconnected from ${namespace}`);
+      return;
+    }
+
+    const mergedOptions: SocketConfig = {
+      ...options,
+      options: {
+        path: path ?? "/socket.io",
+        auth: options.auth,
+        ...options.options,
       }
+    };
 
-      const mergedOptions: SocketConfig = {
-        ...options,
-        options: {
-          path: path ?? "/socket.io",
-          auth: options.auth,
-          ...options.options,
-        }
-      };
+    console.log(`[SocketDocs] Connecting to ${gatewayName} at ${namespace}...`, mergedOptions.options);
 
-      socketService.connect(gatewayName, namespace, mergedOptions, {
-        onConnect: () => {
-          setConnected((curr) => ({ ...curr, [gatewayName]: true }));
-          addLog("received", `Connected to ${namespace}`);
-        },
-        onDisconnect: () => {
-          setConnected((curr) => ({ ...curr, [gatewayName]: false }));
-          addLog("error", `Disconnected from ${namespace}`);
-        },
-        onConnectError: (err) => {
-          setConnected((curr) => ({ ...curr, [gatewayName]: false }));
-          addLog("error", `Connection Error: ${err.message}`);
-        },
-        onAny: (event, ...args) => {
-          addLog("received", `Event: ${event}`, args);
-        },
-      });
-
-      return prevConnected; // State will be updated by callbacks
+    socketService.connect(gatewayName, namespace, mergedOptions, {
+      onConnect: () => {
+        console.log(`[SocketDocs] Connected to ${gatewayName}`);
+        setConnected((curr) => ({ ...curr, [gatewayName]: true }));
+        addLog("received", `Connected to ${namespace}`);
+      },
+      onDisconnect: (reason) => {
+        console.log(`[SocketDocs] Disconnected from ${gatewayName}: ${reason}`);
+        setConnected((curr) => ({ ...curr, [gatewayName]: false }));
+        addLog("error", `Disconnected from ${namespace} (${reason})`);
+      },
+      onConnectError: (err) => {
+        console.error(`[SocketDocs] Connection error for ${gatewayName}:`, err);
+        setConnected((curr) => ({ ...curr, [gatewayName]: false }));
+        addLog("error", `Connection Error: ${err.message}`);
+      },
+      onAny: (event, ...args) => {
+        addLog("received", `Event: ${event}`, args);
+      },
     });
-  }, [options, addLog]);
+  }, [options, connected, addLog]);
 
   const emitEvent = useCallback((gatewayName: string, event: string, payload: string) => {
     try {

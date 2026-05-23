@@ -7,5 +7,7 @@ export declare class SocketExplorerService {
     constructor(modules: Map<any, any>, metadataScanner: MetadataScanner, reflector: Reflector);
     getSchema(): any;
     explore(): void;
+    private isPrimitive;
+    private isSocketType;
 }
 //# sourceMappingURL=socket-explorer.service.d.ts.map

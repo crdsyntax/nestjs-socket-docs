@@ -99,6 +99,26 @@ const App = () => {
     filteredGateways,
   } = useAppLogic(data);
 
+  // Auto-connect logic
+  React.useEffect(() => {
+    if (socketConfig.autoConnect && activeGateway && !connected[activeGateway.name]) {
+      const baseUrl = apiConfig.baseUrl.replace(/\/$/, "");
+      const ns = socketConfig.namespace === "/" 
+        ? activeGateway.namespace 
+        : socketConfig.namespace;
+      
+      const timeout = setTimeout(() => {
+        connect(
+          activeGateway.name, 
+          `${baseUrl}${normalizedNs(ns)}`, 
+          activeGateway.path
+        );
+      }, 500); // Small delay to avoid rapid connections when switching events
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [activeGateway?.name, socketConfig.autoConnect, apiConfig.baseUrl, socketConfig.namespace, connect, connected]);
+
   const handleSaveSettings = (newApi: ApiConfig, newSocket: SocketConfig) => {
     localStorage.setItem(STORAGE_KEYS.API, JSON.stringify(newApi));
     localStorage.setItem(STORAGE_KEYS.SOCKET, JSON.stringify(newSocket));
@@ -149,8 +169,7 @@ const App = () => {
     return <LoadingScreen />;
   }
 
-  const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${activeEvent.event}` : "";
-console.log(activeGateway)
+  const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${socketConfig.path}` : "";
   return (
     <div className={`flex h-screen overflow-hidden font-sans text-text-primary ${theme === 'dark' ? 'bg-bg-primary' : 'bg-white text-gray-900'}`}>
       <Sidebar
@@ -186,6 +205,7 @@ console.log(activeGateway)
 
               <ParametersPanel
                 connected={!!connected[activeGateway.name]}
+                schema={activeEvent.payloadSchema}
                 onConnect={() => {
                   const baseUrl = apiConfig.baseUrl.replace(/\/$/, "");
                   const ns = socketConfig.namespace === "/" 
@@ -202,6 +222,9 @@ console.log(activeGateway)
 
               <RequestBodyPanel
                 payload={payloads[eventKey] ?? "{}"}
+                schema={activeEvent.payloadSchema}
+                responseSchema={activeEvent.responseSchema}
+                emits={activeEvent.emits}
                 onChange={(val) => setPayloads({ ...payloads, [eventKey]: val })}
                 onSend={() => emitEvent(activeGateway.name, activeEvent.event, payloads[eventKey] ?? "{}")}
               />
