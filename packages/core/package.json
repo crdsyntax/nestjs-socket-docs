@@ -1,5 +1,5 @@
 {
-  "name": "@nestjs-socket-docs/core",
+  "name": "@crdsyntax/nestjs-socket-docs",
   "version": "0.1.0",
   "description": "Swagger-like documentation for NestJS WebSockets",
   "author": "crdsyntax",

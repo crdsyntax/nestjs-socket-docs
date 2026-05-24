@@ -11,6 +11,8 @@ interface SidebarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onExport: () => void;
+  expanded: Record<string, boolean>;
+  onToggleExpand: (key: string) => void;
 }
 
 const Sidebar = ({
@@ -22,6 +24,8 @@ const Sidebar = ({
   searchQuery,
   onSearchChange,
   onExport,
+  expanded,
+  onToggleExpand,
 }: SidebarProps) => {
   return (
     <aside className="flex w-[300px] flex-col border-r border-border-subtle bg-bg-primary p-4">
@@ -54,6 +58,8 @@ const Sidebar = ({
           activeEventIdx={activeEventIdx}
           onSelectGateway={onSelectGateway}
           onSelectEvent={onSelectEvent}
+          expanded={expanded}
+          onToggleExpand={onToggleExpand}
         />
       </div>
 

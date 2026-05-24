@@ -6,12 +6,17 @@ import {
 } from "../types";
 import { createApiService, ApiConfig } from "../services/api.service";
 
+const STORAGE_KEY = "socket_docs_payloads";
+
 const buildInitialPayloads = (data: SocketDocsData): PayloadMap => {
   const initialPayloads: PayloadMap = {};
+  const savedPayloads = localStorage.getItem(STORAGE_KEY);
+  const parsedSaved = savedPayloads ? JSON.parse(savedPayloads) : {};
 
   data.gateways.forEach((gateway) => {
     gateway.events.forEach((event) => {
-      initialPayloads[`${gateway.name}-${event.event}`] = JSON.stringify(
+      const key = `${gateway.name}-${event.event}`;
+      initialPayloads[key] = parsedSaved[key] || JSON.stringify(
         event.payloadSchema?.example ?? {},
         null,
         2,
@@ -34,10 +39,6 @@ const useSocketDocs = (options: UseSocketDocsOptions = {}) => {
   const api = useMemo(() => createApiService(options), [options.baseUrl, options.jsonPath]);
 
   useEffect(() => {
-    // If in standalone mode and baseUrl hasn't been configured (still points to UI origin),
-    // we might want to skip or handle it gracefully. 
-    // But for now, let it attempt and fail so the user sees the error modal and can configure it.
-    
     setLoading(true);
     api.fetchDocs()
       .then((result) => {
@@ -51,6 +52,12 @@ const useSocketDocs = (options: UseSocketDocsOptions = {}) => {
       })
       .finally(() => setLoading(false));
   }, [api]);
+
+  useEffect(() => {
+    if (Object.keys(payloads).length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payloads));
+    }
+  }, [payloads]);
 
   const toggleExpand = (key: string) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));

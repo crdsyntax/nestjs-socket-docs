@@ -6,17 +6,21 @@ interface MainHeaderProps {
   connected: boolean;
   gatewayPath: string;
   namespace: string;
+  namespaces: string[];
   theme: "dark" | "light";
   onToggleTheme: () => void;
   onOpenSettings?: () => void;
+  onNamespaceChange: (ns: string) => void;
 }
 const MainHeader = ({
   connected,
   gatewayPath,
   namespace,
+  namespaces,
   theme,
   onToggleTheme,
   onOpenSettings,
+  onNamespaceChange,
 }: MainHeaderProps) => {
   return (
     <div className="flex h-14 items-center justify-end gap-3 border-b border-border-subtle px-6">
@@ -25,8 +29,14 @@ const MainHeader = ({
         <span>{connected ? translations.common.connected : translations.common.disconnected}</span>
         <span className="text-text-muted">{gatewayPath}</span>
       </div>
-      <select className="rounded-md border border-border-subtle bg-bg-surface px-3 py-1.5 text-xs text-text-primary outline-none">
-        <option>{namespace}</option>
+      <select 
+        value={namespace}
+        onChange={(e) => onNamespaceChange(e.target.value)}
+        className="rounded-md border border-border-subtle bg-bg-surface px-3 py-1.5 text-xs text-text-primary outline-none"
+      >
+        {namespaces.map(ns => (
+          <option key={ns} value={ns}>{ns}</option>
+        ))}
       </select>
       <button 
         onClick={onToggleTheme}

@@ -28,5 +28,8 @@ export const translations = {
     clear: "Limpiar",
     pause: "Pausar",
     noLogs: "Envía un evento para ver la respuesta...",
+    all: "Todos",
+    emits: "Emits",
+    listeners: "Listeners",
   }
 };

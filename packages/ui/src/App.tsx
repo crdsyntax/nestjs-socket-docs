@@ -63,7 +63,7 @@ const App = () => {
 
   const [showSettings, setShowSettings] = React.useState(false);
 
-  const { data, payloads, setPayloads, loading, error } = useSocketDocs(apiConfig);
+  const { data, payloads, setPayloads, expanded, toggleExpand, loading, error } = useSocketDocs(apiConfig);
 
   const socketClientOptions = React.useMemo(() => ({
     options: {
@@ -169,7 +169,14 @@ const App = () => {
     return <LoadingScreen />;
   }
 
-  const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${socketConfig.path}` : "";
+  const availableNamespaces = React.useMemo(() => {
+    if (!data) return ["/"];
+    const nsSet = new Set<string>();
+    data.gateways.forEach(g => nsSet.add(g.namespace));
+    return Array.from(nsSet);
+  }, [data]);
+
+  const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${activeEvent.event}` : "";
   return (
     <div className={`flex h-screen overflow-hidden font-sans text-text-primary ${theme === 'dark' ? 'bg-bg-primary' : 'bg-white text-gray-900'}`}>
       <Sidebar
@@ -181,16 +188,20 @@ const App = () => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onExport={exportContract}
+        expanded={expanded}
+        onToggleExpand={toggleExpand}
       />
 
       <main className="flex flex-1 flex-col overflow-y-auto bg-bg-secondary">
         <MainHeader
           connected={activeGateway ? !!connected[activeGateway.name] : false}
           gatewayPath={activeGateway?.path ?? "ws://localhost:3000"}
-          namespace={activeGateway?.namespace ?? "/"}
+          namespace={socketConfig.namespace === "/" && activeGateway ? activeGateway.namespace : socketConfig.namespace}
+          namespaces={availableNamespaces}
           theme={theme}
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
+          onNamespaceChange={(ns) => setSocketConfig(prev => ({ ...prev, namespace: ns }))}
         />
 
         <div className="mx-auto w-full max-w-[1200px] p-6">
