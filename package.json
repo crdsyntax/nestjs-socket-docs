@@ -1,9 +1,8 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs",
-  "version": "0.1.1",
-  "private": true,
+  "version": "0.0.1",
+  "private": false,
   "description": "nestjs-socket-docs",
-<<<<<<< HEAD
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crdsyntax/nestjs-socket-docs.git"
@@ -12,14 +11,9 @@
     "url": "https://github.com/crdsyntax/nestjs-socket-docs/issues"
   },
   "homepage": "https://github.com/crdsyntax/nestjs-socket-docs#readme",
-<<<<<<< HEAD
   "publishConfig": {
     "access": "public"
   },
-=======
->>>>>>> parent of 66472d3 (add improves)
-=======
->>>>>>> parent of c6b8619 (fix names)
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
