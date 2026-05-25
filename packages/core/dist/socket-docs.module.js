@@ -47,15 +47,17 @@ class SocketDocsModule {
             httpAdapter.get("/socket-docs/json", (req, res) => {
                 res.status(200).json(explorer.getSchema());
             });
-            const uiDistPath = path.join(__dirname, "..", "ui-dist");
+            const uiDistPath = path.resolve(__dirname, "../ui-dist");
             httpAdapter.get("/socket-docs", (req, res) => {
                 if (!req.url.endsWith("/")) {
-                    const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
-                    return res.redirect(301, req.url.split("?")[0] + "/" + query);
+                    return res.redirect(301, req.url + "/");
                 }
                 const indexPath = path.join(uiDistPath, "index.html");
                 if (fs.existsSync(indexPath)) {
-                    res.sendFile(indexPath);
+                    res
+                        .status(200)
+                        .type("text/html")
+                        .send(fs.readFileSync(indexPath, "utf-8"));
                 }
                 else {
                     res
