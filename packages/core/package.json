@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": "4.0.0",
 =======
   "version": "2.0.0",
@@ -13,6 +14,9 @@
 =======
   "version": "1.0.0",
 >>>>>>> parent of 646dbd3 (fixes)
+=======
+  "version": "0.1.0",
+>>>>>>> parent of f36c01c (add improve v1)
   "description": "Swagger-like documentation for NestJS WebSockets",
   "author": "crdsyntax",
   "license": "MIT",

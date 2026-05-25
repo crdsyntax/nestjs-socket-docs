@@ -2,6 +2,7 @@
   "name": "@crdsyntax/nestjs-socket-docs-cli",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": "4.0.0",
 =======
   "version": "2.0.0",
@@ -9,6 +10,9 @@
 =======
   "version": "1.0.0",
 >>>>>>> parent of 27cd563 (fix)
+=======
+  "version": "0.1.0",
+>>>>>>> parent of f36c01c (add improve v1)
   "description": "CLI for nestjs-socket-docs",
   "main": "dist/index.js",
   "bin": {
