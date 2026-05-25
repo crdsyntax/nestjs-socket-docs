@@ -1,6 +1,6 @@
 {
-  "name": "@crdsyntax/nestjs-socket-docs",
-  "version": "0.1.1",
+  "name": "nestjs-socket-docs-monorepo",
+  "version": "1.0.0",
   "private": true,
   "description": "nestjs-socket-docs",
   "repository": {
@@ -11,6 +11,9 @@
     "url": "https://github.com/crdsyntax/nestjs-socket-docs/issues"
   },
   "homepage": "https://github.com/crdsyntax/nestjs-socket-docs#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
