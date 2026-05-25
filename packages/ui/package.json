@@ -1,6 +1,6 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs-ui",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "description": "UI for nestjs-socket-docs",
   "author": "crdsyntax",
   "license": "MIT",

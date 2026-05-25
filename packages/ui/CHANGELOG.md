@@ -1,5 +1,11 @@
 # @crdsyntax/nestjs-socket-docs-ui
 
+## 3.0.0
+
+### Major Changes
+
+- 4f63e70: not found playground
+
 ## 2.0.0
 
 ### Major Changes
