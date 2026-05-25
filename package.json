@@ -1,7 +1,7 @@
 {
-  "name": "nestjs-socket-docs-monorepo",
-  "version": "1.0.1",
-  "private": true,
+  "name": "nestjs-socket-docs",
+  "version": "2.0.2",
+  "private": false,
   "description": "nestjs-socket-docs",
   "repository": {
     "type": "git",
