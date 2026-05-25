@@ -53,7 +53,7 @@ export class SocketDocsModule {
         } else {
           res
             .status(404)
-            .send("UI not found. Make sure @nestjs-socket-docs/ui is built.");
+            .send("UI not found. Make sure UI assets are built.");
         }
       });
 

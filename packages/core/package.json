@@ -4,12 +4,25 @@
   "description": "Swagger-like documentation for NestJS WebSockets",
   "author": "crdsyntax",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crdsyntax/nestjs-socket-docs.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/crdsyntax/nestjs-socket-docs/issues"
+  },
+  "homepage": "https://github.com/crdsyntax/nestjs-socket-docs/tree/main/packages/core#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
     "ui-dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
