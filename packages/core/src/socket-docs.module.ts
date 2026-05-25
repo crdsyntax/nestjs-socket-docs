@@ -10,7 +10,7 @@ export class SocketDocsModule {
 
     const container = app.container;
     if (!container) {
-      console.error("❌ Could not find NestJS container.");
+      console.error("❌ [SocketDocs] Could not find NestJS container.");
       return;
     }
 
@@ -24,7 +24,14 @@ export class SocketDocsModule {
       reflector,
     );
     console.log("[SocketDocs] Exploring modules...");
-    explorer.explore();
+    try {
+      explorer.explore();
+    } catch (err) {
+      console.error("❌ [SocketDocs] Error during module exploration:", err);
+    }
+
+    const uiDistPath = path.resolve(__dirname, "../ui-dist");
+    console.log(`[SocketDocs] UI distribution path: ${uiDistPath}`);
 
     const schema = explorer.getSchema();
     console.log(`[SocketDocs] Found ${schema.gateways.length} gateways.`);
@@ -34,40 +41,56 @@ export class SocketDocsModule {
 
     const httpAdapter = app.getHttpAdapter();
     if (httpAdapter) {
+      // JSON Endpoint
       httpAdapter.get("/socket-docs/json", (req: any, res: any) => {
-        res.status(200).json(explorer.getSchema());
+        console.log(`[SocketDocs] Serving schema to: ${httpAdapter.getRequestUrl(req)}`);
+        return httpAdapter.reply(res, explorer.getSchema(), 200);
       });
 
-      const uiDistPath = path.resolve(__dirname, "../ui-dist");
-
+      // UI Index
       httpAdapter.get("/socket-docs", (req: any, res: any) => {
-        if (!req.url.endsWith("/")) {
-          return res.redirect(301, req.url + "/");
+        const url = httpAdapter.getRequestUrl(req);
+        if (!url.endsWith("/")) {
+          return httpAdapter.redirect(res, 301, url + "/");
         }
+        
         const indexPath = path.join(uiDistPath, "index.html");
         if (fs.existsSync(indexPath)) {
-          res
-            .status(200)
-            .type("text/html")
-            .send(fs.readFileSync(indexPath, "utf-8"));
+          const content = fs.readFileSync(indexPath, "utf-8");
+          httpAdapter.setHeader(res, "Content-Type", "text/html");
+          return httpAdapter.reply(res, content, 200);
         } else {
-          res
-            .status(404)
-            .send("UI not found. Make sure @nestjs-socket-docs/ui is built.");
+          console.error(`[SocketDocs] UI Index not found at: ${indexPath}`);
+          return httpAdapter.reply(res, "UI not found. Make sure @nestjs-socket-docs/ui is built.", 404);
         }
       });
 
+      // Assets
       httpAdapter.get("/socket-docs/assets/:file", (req: any, res: any) => {
         const assetPath = req.params.file;
-        const filePath = path.join(uiDistPath, "assets", assetPath);
+        const filePath = path.resolve(uiDistPath, "assets", assetPath);
+        
         if (fs.existsSync(filePath)) {
-          res.status(200).sendFile(filePath);
+          console.log(`[SocketDocs] Serving asset: ${assetPath}`);
+          // Note: Express sendFile is usually fine, but let's try to be safe
+          if (typeof res.sendFile === 'function') {
+            return res.sendFile(filePath);
+          }
+          // Fallback for non-express adapters (though user is on Express)
+          const content = fs.readFileSync(filePath);
+          const ext = path.extname(filePath);
+          const mime = ext === '.js' ? 'application/javascript' : ext === '.css' ? 'text/css' : 'application/octet-stream';
+          httpAdapter.setHeader(res, "Content-Type", mime);
+          return httpAdapter.reply(res, content, 200);
         } else {
-          res.status(404).send("Asset not found");
+          console.error(`[SocketDocs] Asset not found at: ${filePath}`);
+          return httpAdapter.reply(res, "Asset not found", 404);
         }
       });
 
       console.log("🚀 Socket Docs available at /socket-docs");
+    } else {
+      console.error("❌ [SocketDocs] Could not find HTTP adapter.");
     }
   }
 }

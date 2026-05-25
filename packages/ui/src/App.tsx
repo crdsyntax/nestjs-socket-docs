@@ -65,6 +65,10 @@ const App = () => {
 
   const { data, payloads, setPayloads, expanded, toggleExpand, loading, error } = useSocketDocs(apiConfig);
 
+  React.useEffect(() => {
+    console.log("[SocketDocs] UI State:", { data, loading, error });
+  }, [data, loading, error]);
+
   const socketClientOptions = React.useMemo(() => ({
     options: {
       path: socketConfig.path,
@@ -82,6 +86,13 @@ const App = () => {
 
   const { connected, logs, connect, emitEvent, clearLogs } = useSocketClient(socketClientOptions);
   
+  const availableNamespaces = React.useMemo(() => {
+    if (!data) return ["/"];
+    const nsSet = new Set<string>();
+    data.gateways.forEach(g => nsSet.add(g.namespace));
+    return Array.from(nsSet);
+  }, [data]);
+
   const {
     activeGatewayIdx,
     setActiveGatewayIdx,
@@ -168,13 +179,6 @@ const App = () => {
   if (!data) {
     return <LoadingScreen />;
   }
-
-  const availableNamespaces = React.useMemo(() => {
-    if (!data) return ["/"];
-    const nsSet = new Set<string>();
-    data.gateways.forEach(g => nsSet.add(g.namespace));
-    return Array.from(nsSet);
-  }, [data]);
 
   const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${activeEvent.event}` : "";
   return (

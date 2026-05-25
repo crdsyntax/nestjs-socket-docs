@@ -49,24 +49,20 @@ export class ASTScannerService {
       const isSocketController = decorator.getName() === 'SocketController';
       const propName = isSocketController ? 'name' : 'namespace';
       
-      const prop = obj.getProperty(propName);
+      const prop = obj.getProperty(propName) || obj.getProperty('namespace');
       if (prop && prop.getKind() === SyntaxKind.PropertyAssignment) {
         const init = prop.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
-        if (init && init.getKind() === SyntaxKind.StringLiteral) {
-          return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+        if (init) {
+          if (init.getKind() === SyntaxKind.StringLiteral) {
+            return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+          }
+          // Handle Enums or variables (e.g., Namespaces.YOUTUBE_MUSIC)
+          return init.getText();
         }
       }
-
-      // Fallback for WebSocketGateway if name was used or if namespace is missing
-      if (!isSocketController) {
-        const altProp = obj.getProperty('namespace');
-        if (altProp && altProp.getKind() === SyntaxKind.PropertyAssignment) {
-           const init = altProp.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
-           if (init && init.getKind() === SyntaxKind.StringLiteral) {
-             return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
-           }
-        }
-      }
+    } else {
+      // Fallback for when it's a direct Enum/variable reference
+      return arg.getText();
     }
     return '/';
   }
@@ -80,8 +76,14 @@ export class ASTScannerService {
       if (decorator) {
         const args = decorator.getArguments();
         let eventName = 'unknown';
-        if (args.length > 0 && args[0].getKind() === SyntaxKind.StringLiteral) {
-          eventName = args[0].asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+        if (args.length > 0) {
+          const arg = args[0];
+          if (arg.getKind() === SyntaxKind.StringLiteral) {
+            eventName = arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+          } else {
+            // Handle Enums or variables (e.g., YoutubeMusicWsEvents.SEARCH_SUGGEST)
+            eventName = arg.getText();
+          }
         }
 
         events.push({

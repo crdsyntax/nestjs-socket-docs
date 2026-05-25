@@ -8,8 +8,10 @@ import { createApiService, ApiConfig } from "../services/api.service";
 
 const STORAGE_KEY = "socket_docs_payloads";
 
-const buildInitialPayloads = (data: SocketDocsData): PayloadMap => {
+const buildInitialPayloads = (data: SocketDocsData | null): PayloadMap => {
   const initialPayloads: PayloadMap = {};
+  if (!data || !data.gateways) return initialPayloads;
+  
   const savedPayloads = localStorage.getItem(STORAGE_KEY);
   const parsedSaved = savedPayloads ? JSON.parse(savedPayloads) : {};
 

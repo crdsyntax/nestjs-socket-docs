@@ -44,23 +44,21 @@ class ASTScannerService {
             const obj = arg.asKindOrThrow(ts_morph_1.SyntaxKind.ObjectLiteralExpression);
             const isSocketController = decorator.getName() === 'SocketController';
             const propName = isSocketController ? 'name' : 'namespace';
-            const prop = obj.getProperty(propName);
+            const prop = obj.getProperty(propName) || obj.getProperty('namespace');
             if (prop && prop.getKind() === ts_morph_1.SyntaxKind.PropertyAssignment) {
                 const init = prop.asKindOrThrow(ts_morph_1.SyntaxKind.PropertyAssignment).getInitializer();
-                if (init && init.getKind() === ts_morph_1.SyntaxKind.StringLiteral) {
-                    return init.asKindOrThrow(ts_morph_1.SyntaxKind.StringLiteral).getLiteralValue();
-                }
-            }
-            // Fallback for WebSocketGateway if name was used or if namespace is missing
-            if (!isSocketController) {
-                const altProp = obj.getProperty('namespace');
-                if (altProp && altProp.getKind() === ts_morph_1.SyntaxKind.PropertyAssignment) {
-                    const init = altProp.asKindOrThrow(ts_morph_1.SyntaxKind.PropertyAssignment).getInitializer();
-                    if (init && init.getKind() === ts_morph_1.SyntaxKind.StringLiteral) {
+                if (init) {
+                    if (init.getKind() === ts_morph_1.SyntaxKind.StringLiteral) {
                         return init.asKindOrThrow(ts_morph_1.SyntaxKind.StringLiteral).getLiteralValue();
                     }
+                    // Handle Enums or variables (e.g., Namespaces.YOUTUBE_MUSIC)
+                    return init.getText();
                 }
             }
+        }
+        else {
+            // Fallback for when it's a direct Enum/variable reference
+            return arg.getText();
         }
         return '/';
     }
@@ -72,8 +70,15 @@ class ASTScannerService {
             if (decorator) {
                 const args = decorator.getArguments();
                 let eventName = 'unknown';
-                if (args.length > 0 && args[0].getKind() === ts_morph_1.SyntaxKind.StringLiteral) {
-                    eventName = args[0].asKindOrThrow(ts_morph_1.SyntaxKind.StringLiteral).getLiteralValue();
+                if (args.length > 0) {
+                    const arg = args[0];
+                    if (arg.getKind() === ts_morph_1.SyntaxKind.StringLiteral) {
+                        eventName = arg.asKindOrThrow(ts_morph_1.SyntaxKind.StringLiteral).getLiteralValue();
+                    }
+                    else {
+                        // Handle Enums or variables (e.g., YoutubeMusicWsEvents.SEARCH_SUGGEST)
+                        eventName = arg.getText();
+                    }
                 }
                 events.push({
                     methodName: method.getName(),

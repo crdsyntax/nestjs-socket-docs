@@ -31,28 +31,39 @@ class SocketExplorerService {
         });
         socketControllers.forEach(wrapper => {
             const { instance } = wrapper;
+            if (!instance)
+                return;
             const prototype = Object.getPrototypeOf(instance);
             const controllerMetadata = this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
             let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor) ||
                 Reflect.getMetadata('websockets:gateway_metadata', instance.constructor);
+            const gatewayNamespace = Reflect.getMetadata('websockets:namespace', instance.constructor);
             if (!gatewayMetadata) {
                 gatewayMetadata = {};
             }
+            const namespace = controllerMetadata.name || gatewayNamespace || gatewayMetadata.namespace || '/';
+            const path = gatewayMetadata.path || '/socket.io';
+            console.log(`[SocketDocs] Exploring gateway: ${instance.constructor.name} (ns: ${namespace}, path: ${path})`);
             const gatewaySchema = {
                 name: instance.constructor.name,
-                namespace: controllerMetadata.name || gatewayMetadata.namespace || '/',
-                path: gatewayMetadata.path || '/socket.io',
+                namespace,
+                path,
                 description: controllerMetadata.description,
                 events: []
             };
-            this.metadataScanner.scanFromPrototype(instance, prototype, methodName => {
+            // Get all method names from prototype to be more robust across NestJS versions
+            const methodNames = this.metadataScanner.getAllMethodNames(prototype);
+            methodNames.forEach(methodName => {
                 const method = instance[methodName];
+                if (typeof method !== 'function')
+                    return;
                 const eventMetadata = this.reflector.get(metadata_constants_1.SOCKET_EVENT_METADATA, method) ||
                     Reflect.getMetadata(metadata_constants_1.SOCKET_EVENT_METADATA, method);
                 const subscribeMetadata = this.reflector.get('websockets:subscribe_message', method) ||
                     Reflect.getMetadata('websockets:subscribe_message', method);
                 if (eventMetadata || subscribeMetadata) {
                     const eventName = eventMetadata?.event || subscribeMetadata;
+                    console.log(`[SocketDocs]   Found event: ${eventName} in method: ${methodName}`);
                     const eventEntry = {
                         event: eventName,
                         summary: eventMetadata?.summary || `Event: ${eventName}`,
