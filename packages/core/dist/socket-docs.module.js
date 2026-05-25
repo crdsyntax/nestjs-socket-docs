@@ -48,30 +48,29 @@ class SocketDocsModule {
                 res.status(200).json(explorer.getSchema());
             });
             const uiDistPath = path.join(__dirname, "..", "ui-dist");
-            const indexPath = path.join(uiDistPath, "index.html");
             console.log(`[SocketDocs] UI Assets Path: ${uiDistPath}`);
-            console.log(`[SocketDocs] Index Path: ${indexPath}`);
-            // Serve static assets with a more direct approach
-            httpAdapter.get("/socket-docs/assets/:file", (req, res) => {
-                const file = req.params.file;
-                const filePath = path.join(uiDistPath, "assets", file);
+            // Serve static assets
+            httpAdapter.use("/socket-docs/assets", (req, res, next) => {
+                const assetPath = req.url;
+                const filePath = path.join(uiDistPath, "assets", assetPath);
                 if (fs.existsSync(filePath)) {
                     return res.sendFile(filePath);
                 }
-                res.status(404).send("Asset not found");
+                next();
             });
             httpAdapter.get("/socket-docs", (req, res) => {
                 if (!req.url.endsWith("/")) {
                     const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
                     return res.redirect(301, req.url.split("?")[0] + "/" + query);
                 }
+                const indexPath = path.join(uiDistPath, "index.html");
                 if (fs.existsSync(indexPath)) {
-                    const html = fs.readFileSync(indexPath, "utf-8");
-                    return res.type("text/html").send(html);
+                    res.setHeader("Content-Type", "text/html");
+                    return fs.createReadStream(indexPath).pipe(res);
                 }
                 else {
                     console.error(`[SocketDocs] Index not found at: ${indexPath}`);
-                    return res.status(404).send(`UI not found. Checked path: ${indexPath}`);
+                    res.status(404).send(`UI not found. Checked path: ${indexPath}`);
                 }
             });
             console.log("🚀 Socket Docs available at /socket-docs");

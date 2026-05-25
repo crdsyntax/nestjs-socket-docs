@@ -1,5 +1,11 @@
 # @crdsyntax/nestjs-socket-docs-ui
 
+## 4.0.0
+
+### Major Changes
+
+- otro fix porque nose ve el playground
+
 ## 3.0.0
 
 ### Major Changes

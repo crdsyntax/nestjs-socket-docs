@@ -1,6 +1,6 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs-cli",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "CLI for nestjs-socket-docs",
   "author": "crdsyntax",
   "license": "MIT",
