@@ -18,7 +18,7 @@ export class BootstrapEditorService {
 
     // Add import if it doesn't exist
     const importName = 'SocketDocsModule';
-    const importPath = '@crdsyntax/nestjs-socket-docs';
+    const importPath = '@nestjs-socket-docs/core';
     const existingImport = sourceFile.getImportDeclaration(d => d.getModuleSpecifierValue() === importPath);
     
     if (!existingImport) {

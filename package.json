@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "nestjs-socket-docs",
+<<<<<<< HEAD
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crdsyntax/nestjs-socket-docs.git"
@@ -14,6 +15,8 @@
   "publishConfig": {
     "access": "public"
   },
+=======
+>>>>>>> parent of 66472d3 (add improves)
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",

@@ -1,4 +1,4 @@
-# @crdsyntax/nestjs-socket-docs
+# @nestjs-socket-docs/core
 
 El núcleo de `nestjs-socket-docs`. Se encarga de la introspección de metadatos, generación de esquemas y exposición de la UI.
 
@@ -32,7 +32,7 @@ Decorador de parámetro para identificar explícitamente el DTO de entrada.
 Se inicializa en el `main.ts` de tu aplicación NestJS:
 
 ```typescript
-import { SocketDocsModule } from '@crdsyntax/nestjs-socket-docs';
+import { SocketDocsModule } from '@nestjs-socket-docs/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

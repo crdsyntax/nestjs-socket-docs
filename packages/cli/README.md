@@ -1,4 +1,4 @@
-# @crdsyntax/nestjs-socket-docs-cli
+# @nestjs-socket-docs/cli
 
 CLI para automatizar la integración de `nestjs-socket-docs` en proyectos de NestJS.
 

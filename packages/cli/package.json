@@ -10,28 +10,13 @@
   "version": "1.0.0",
 >>>>>>> parent of 27cd563 (fix)
   "description": "CLI for nestjs-socket-docs",
-  "author": "crdsyntax",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/crdsyntax/nestjs-socket-docs.git",
-    "directory": "packages/cli"
-  },
-  "bugs": {
-    "url": "https://github.com/crdsyntax/nestjs-socket-docs/issues"
-  },
-  "homepage": "https://github.com/crdsyntax/nestjs-socket-docs/tree/main/packages/cli#readme",
-  "publishConfig": {
-    "access": "public"
-  },
   "main": "dist/index.js",
   "bin": {
     "socket-docs": "dist/index.js"
   },
   "files": [
     "dist",
-    "README.md",
-    "LICENSE"
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",

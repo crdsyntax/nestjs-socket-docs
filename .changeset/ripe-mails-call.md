@@ -1,7 +1,7 @@
 ---
-"@crdsyntax/nestjs-socket-docs-cli": major
-"@crdsyntax/nestjs-socket-docs": major
-"@crdsyntax/nestjs-socket-docs-ui": major
+"@nestjs-socket-docs/cli": major
+"@nestjs-socket-docs/core": major
+"@nestjs-socket-docs/ui": major
 ---
 
 fix names
