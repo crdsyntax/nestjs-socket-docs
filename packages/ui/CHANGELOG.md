@@ -1,5 +1,11 @@
 # @crdsyntax/nestjs-socket-docs-ui
 
+## 2.0.0
+
+### Major Changes
+
+- c6b8619: fix names
+
 ## 1.0.0
 
 ### Major Changes
