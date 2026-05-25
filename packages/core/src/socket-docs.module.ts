@@ -33,7 +33,6 @@ export class SocketDocsModule {
       });
 
       const uiDistPath = path.join(__dirname, "..", "ui-dist");
-      console.log(`[SocketDocs] UI Assets Path: ${uiDistPath}`);
 
       httpAdapter.get("/socket-docs", (req: any, res: any) => {
         if (!req.url.endsWith("/")) {
@@ -41,25 +40,21 @@ export class SocketDocsModule {
           return res.redirect(301, req.url.split("?")[0] + "/" + query);
         }
         const indexPath = path.join(uiDistPath, "index.html");
-        console.log(`[SocketDocs] Serving index from: ${indexPath}`);
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          console.error(`[SocketDocs] Index not found at: ${indexPath}`);
           res
             .status(404)
-            .send(`UI not found. Checked path: ${indexPath}`);
+            .send("UI not found. Make sure UI assets are built.");
         }
       });
 
       httpAdapter.get("/socket-docs/assets/:file", (req: any, res: any) => {
         const assetPath = req.params.file;
         const filePath = path.join(uiDistPath, "assets", assetPath);
-        console.log(`[SocketDocs] Serving asset from: ${filePath}`);
         if (fs.existsSync(filePath)) {
           res.status(200).sendFile(filePath);
         } else {
-          console.error(`[SocketDocs] Asset not found at: ${filePath}`);
           res.status(404).send("Asset not found");
         }
       });

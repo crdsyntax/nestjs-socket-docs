@@ -1,10 +1,14 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs-ui",
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": "4.0.0",
 =======
   "version": "2.0.0",
 >>>>>>> parent of 4f63e70 (error not found exce)
+=======
+  "version": "1.0.0",
+>>>>>>> parent of 27cd563 (fix)
   "description": "UI for nestjs-socket-docs",
   "author": "crdsyntax",
   "license": "MIT",

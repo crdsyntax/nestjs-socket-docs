@@ -1,5 +1,6 @@
 # @crdsyntax/nestjs-socket-docs
 
+<<<<<<< HEAD
 ## 4.0.0
 
 ### Major Changes
@@ -18,6 +19,8 @@
 
 - c6b8619: fix names
 
+=======
+>>>>>>> parent of 27cd563 (fix)
 ## 1.0.0
 
 ### Major Changes
