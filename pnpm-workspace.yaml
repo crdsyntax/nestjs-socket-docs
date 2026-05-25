@@ -1,7 +1,0 @@
-packages:
-  - 'packages/*'
-allowBuilds:
-  '@nestjs/core': true
-  esbuild: true
-overrides:
-  nestjs-socket-docs: link:../../../../../nestjs-socket-docs

@@ -1,1 +1,1 @@
-{"version":3,"file":"socket-payload.decorator.d.ts","sourceRoot":"","sources":["../../src/decorators/socket-payload.decorator.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,aAAa,SAAU,GAAG,KAAG,kBAMzC,CAAC"}
+{"version":3,"file":"socket-payload.decorator.d.ts","sourceRoot":"","sources":["../../src/decorators/socket-payload.decorator.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,aAAa,GAAI,MAAM,GAAG,KAAG,kBAMzC,CAAC"}
