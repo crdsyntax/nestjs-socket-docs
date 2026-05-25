@@ -1,19 +1,25 @@
-import { INestApplication } from "@nestjs/common";
-import { MetadataScanner, ModulesContainer, Reflector } from "@nestjs/core";
+import { INestApplicationContext } from "@nestjs/common";
+import { MetadataScanner, Reflector } from "@nestjs/core";
 import { SocketExplorerService } from "./explorer/socket-explorer.service";
 import * as path from "path";
 import * as fs from "fs";
 
 export class SocketDocsModule {
-  static async setup(app: INestApplication) {
+  static async setup(app: any) {
     console.log("--- SocketDocsModule Setup ---");
 
-    const modulesContainer = app.get(ModulesContainer);
-    const metadataScanner = app.get(MetadataScanner);
-    const reflector = app.get(Reflector);
+    const container = app.container;
+    if (!container) {
+      console.error("❌ Could not find NestJS container.");
+      return;
+    }
+
+    const modules = container.getModules();
+    const metadataScanner = new MetadataScanner();
+    const reflector = new Reflector();
 
     const explorer = new SocketExplorerService(
-      modulesContainer,
+      modules,
       metadataScanner,
       reflector,
     );

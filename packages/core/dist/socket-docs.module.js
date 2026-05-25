@@ -31,10 +31,15 @@ const fs = __importStar(require("fs"));
 class SocketDocsModule {
     static async setup(app) {
         console.log("--- SocketDocsModule Setup ---");
-        const modulesContainer = app.get(core_1.ModulesContainer);
-        const metadataScanner = app.get(core_1.MetadataScanner);
-        const reflector = app.get(core_1.Reflector);
-        const explorer = new socket_explorer_service_1.SocketExplorerService(modulesContainer, metadataScanner, reflector);
+        const container = app.container;
+        if (!container) {
+            console.error("❌ Could not find NestJS container.");
+            return;
+        }
+        const modules = container.getModules();
+        const metadataScanner = new core_1.MetadataScanner();
+        const reflector = new core_1.Reflector();
+        const explorer = new socket_explorer_service_1.SocketExplorerService(modules, metadataScanner, reflector);
         console.log("[SocketDocs] Exploring modules...");
         explorer.explore();
         const schema = explorer.getSchema();
