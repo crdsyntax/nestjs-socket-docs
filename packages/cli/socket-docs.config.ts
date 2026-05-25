@@ -1,4 +1,4 @@
-import { defineSocketDocsConfig } from '@nestjs-socket-docs/core';
+import { defineSocketDocsConfig } from '@crdsyntax/nestjs-socket-docs';
 
 export default defineSocketDocsConfig({
   path: '/socket-docs',

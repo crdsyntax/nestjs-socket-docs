@@ -1,6 +1,6 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs-cli",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "CLI for nestjs-socket-docs",
   "main": "dist/index.js",
   "bin": {

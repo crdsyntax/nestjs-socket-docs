@@ -51,7 +51,7 @@ program
 
     console.log(chalk.blue('📄 Generating socket-docs.config.ts...'));
     const configPath = path.resolve(rootDir, 'socket-docs.config.ts');
-    const configContent = `import { defineSocketDocsConfig } from '@nestjs-socket-docs/core';
+    const configContent = `import { defineSocketDocsConfig } from '@crdsyntax/nestjs-socket-docs';
 
 export default defineSocketDocsConfig({
   path: '/socket-docs',
