@@ -15,8 +15,8 @@ const ParametersPanel = ({ schema, responseSchema }: ParametersPanelProps) => {
     return JSON.stringify(obj, null, 2);
   };
 
-  const hasRequest = !!schema && Object.keys(schema?.properties || {}).length > 0;
-  const hasResponse = !!responseSchema && Object.keys(responseSchema?.properties || {}).length > 0;
+  const hasRequest = !!schema && (Object.keys(schema?.properties || {}).length > 0 || !!schema.type);
+  const hasResponse = !!responseSchema && (Object.keys(responseSchema?.properties || {}).length > 0 || !!responseSchema.type);
 
   if (!hasRequest && !hasResponse) {
     return (

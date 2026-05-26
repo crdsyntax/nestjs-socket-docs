@@ -18,7 +18,7 @@ export interface SocketDocsEvent {
     summary?: string;
     description?: string;
     payloadSchema?: SocketDocsPayloadSchema;
-    responseSchema?: any;
+    responseSchema?: SocketDocsPayloadSchema;
     emits?: string;
     auth?: 'JWT' | 'API_KEY' | 'BASIC' | 'NONE';
 }
