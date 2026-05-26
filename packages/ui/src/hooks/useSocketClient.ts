@@ -35,16 +35,12 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
       }
     };
 
-    console.log(`[SocketDocs] Connecting to ${gatewayName} at ${namespace}...`, mergedOptions.options);
-
     socketService.connect(gatewayName, namespace, mergedOptions, {
       onConnect: () => {
-        console.log(`[SocketDocs] Connected to ${gatewayName}`);
         setConnected((curr) => ({ ...curr, [gatewayName]: true }));
         addLog("received", `Connected to ${namespace}`);
       },
       onDisconnect: (reason) => {
-        console.log(`[SocketDocs] Disconnected from ${gatewayName}: ${reason}`);
         setConnected((curr) => ({ ...curr, [gatewayName]: false }));
         addLog("error", `Disconnected from ${namespace} (${reason})`);
       },

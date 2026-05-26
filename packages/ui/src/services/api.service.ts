@@ -14,8 +14,6 @@ class ApiService {
     const baseUrl = config.baseUrl || window.location.origin;
     const jsonPath = config.jsonPath || "/socket-docs/json";
     
-    console.log(`[SocketDocs] ApiService initialized with: baseUrl=${baseUrl}, jsonPath=${jsonPath}`);
-    
     this.instance = axios.create({
       baseURL: baseUrl,
       timeout: 10000, // 10 second timeout
@@ -24,9 +22,7 @@ class ApiService {
   }
 
   async fetchDocs(): Promise<SocketDocsData> {
-    console.log(`[SocketDocs] Fetching docs from: ${this.instance.defaults.baseURL}${this.jsonPath}`);
     const { data } = await this.instance.get<SocketDocsData>(this.jsonPath);
-    console.log(`[SocketDocs] Docs fetched successfully:`, data);
     return data;
   }
 }

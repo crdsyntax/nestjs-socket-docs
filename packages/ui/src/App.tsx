@@ -96,7 +96,6 @@ const App = () => {
   const { data, payloads, setPayloads, expanded, toggleExpand, loading, error } = useSocketDocs(schemaConfig);
 
   React.useEffect(() => {
-    console.log("[SocketDocs] UI State:", { data, loading, error });
   }, [data, loading, error]);
 
   const socketClientOptions = React.useMemo(() => ({

@@ -1,6 +1,6 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs-ui",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "UI for nestjs-socket-docs",
   "main": "./dist/index.umd.js",
   "module": "./dist/index.es.js",

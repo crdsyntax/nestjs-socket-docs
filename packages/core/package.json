@@ -1,6 +1,6 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Swagger-like documentation for NestJS WebSockets",
   "author": "crdsyntax",
   "license": "MIT",

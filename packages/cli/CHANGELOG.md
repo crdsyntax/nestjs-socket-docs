@@ -1,5 +1,13 @@
 # @crdsyntax/nestjs-socket-docs-cli
 
+## 2.3.1
+
+### Patch Changes
+
+- patch
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.3.1
+
 ## 2.3.0
 
 ### Minor Changes

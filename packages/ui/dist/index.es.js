@@ -1458,12 +1458,12 @@ const pt = new Dn(), Ln = (e = {}) => {
         ...e.options
       }
     };
-    console.log(`[SocketDocs] Connecting to ${d} at ${m}...`, v.options), pt.connect(d, m, v, {
+    pt.connect(d, m, v, {
       onConnect: () => {
-        console.log(`[SocketDocs] Connected to ${d}`), n((j) => ({ ...j, [d]: !0 })), o("received", `Connected to ${m}`);
+        n((j) => ({ ...j, [d]: !0 })), o("received", `Connected to ${m}`);
       },
       onDisconnect: (j) => {
-        console.log(`[SocketDocs] Disconnected from ${d}: ${j}`), n((y) => ({ ...y, [d]: !1 })), o("error", `Disconnected from ${m} (${j})`);
+        n((y) => ({ ...y, [d]: !1 })), o("error", `Disconnected from ${m} (${j})`);
       },
       onConnectError: (j) => {
         console.error(`[SocketDocs] Connection error for ${d}:`, j), n((y) => ({ ...y, [d]: !1 })), o("error", `Connection Error: ${j.message}`);
@@ -3624,16 +3624,15 @@ class Ao {
     He(this, "instance");
     He(this, "jsonPath");
     const n = t.baseUrl || window.location.origin, r = t.jsonPath || "/socket-docs/json";
-    console.log(`[SocketDocs] ApiService initialized with: baseUrl=${n}, jsonPath=${r}`), this.instance = To.create({
+    this.instance = To.create({
       baseURL: n,
       timeout: 1e4
       // 10 second timeout
     }), this.jsonPath = r;
   }
   async fetchDocs() {
-    console.log(`[SocketDocs] Fetching docs from: ${this.instance.defaults.baseURL}${this.jsonPath}`);
     const { data: t } = await this.instance.get(this.jsonPath);
-    return console.log("[SocketDocs] Docs fetched successfully:", t), t;
+    return t;
   }
 }
 const ko = (e) => new Ao(e), Pr = "socket_docs_payloads", Po = (e) => {
@@ -3762,7 +3761,6 @@ const ko = (e) => new Ao(e), Pr = "socket_docs_payloads", Po = (e) => {
     baseUrl: window.location.origin
   } : t, [t, e]), { data: f, payloads: p, setPayloads: d, expanded: m, toggleExpand: w, loading: v, error: j } = Do(l);
   $.useEffect(() => {
-    console.log("[SocketDocs] UI State:", { data: f, loading: v, error: j });
   }, [f, v, j]);
   const y = $.useMemo(() => ({
     options: {
