@@ -1,5 +1,11 @@
 # @crdsyntax/nestjs-socket-docs
 
+## 2.3.0
+
+### Minor Changes
+
+- fix
+
 ## 2.0.0
 
 ### Major Changes

@@ -8,10 +8,14 @@ export interface LogEntry {
 }
 export interface SocketDocsPayloadSchema {
     type: string;
-    properties?: Record<string, any>;
+    properties?: Record<string, SocketDocsPayloadSchema>;
+    items?: SocketDocsPayloadSchema;
     required?: string[];
     example?: unknown;
     description?: string;
+    enum?: unknown[];
+    format?: string;
+    default?: unknown;
 }
 export interface SocketDocsEvent {
     event: string;

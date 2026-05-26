@@ -1,5 +1,6 @@
+import { SocketDocsGateway } from "../types";
 interface SidebarProps {
-    gateways: any[];
+    gateways: SocketDocsGateway[];
     activeGatewayIdx: number;
     activeEventIdx: number;
     onSelectGateway: (idx: number) => void;

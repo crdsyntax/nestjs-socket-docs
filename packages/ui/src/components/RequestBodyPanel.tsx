@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { Play } from "lucide-react";
 import { translations } from "../locales/es";
 
+import { SocketDocsPayloadSchema } from "../types";
+
 interface RequestBodyPanelProps {
   payload: string;
-  schema?: any;
-  responseSchema?: any;
+  schema?: SocketDocsPayloadSchema;
+  responseSchema?: SocketDocsPayloadSchema;
   emits?: string;
   onChange: (val: string) => void;
   onSend: () => void;

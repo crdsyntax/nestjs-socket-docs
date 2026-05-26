@@ -1,6 +1,7 @@
+import { LogEntry } from "../types";
 interface RealtimePanelProps {
     connected: boolean;
-    logs: any[];
+    logs: LogEntry[];
     onClear: () => void;
     isPaused: boolean;
     onTogglePause: () => void;

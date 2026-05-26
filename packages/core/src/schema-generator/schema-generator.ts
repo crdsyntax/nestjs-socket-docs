@@ -57,8 +57,8 @@ export class SchemaGenerator {
     }
 
     // 2. Metadatos en el constructor
-    const constArrayMeta = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, constructor) || 
-                           Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, constructor) || []) as string[];
+    const constArrayMeta = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, constructor as object) || 
+                           Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, constructor as object) || []) as string[];
     constArrayMeta.forEach((p: string) => propNames.add(p.replace(/^:/, '')));
 
     // 3. Soporte al Swagger CLI Plugin (_METADATA_FACTORY)
@@ -85,13 +85,13 @@ export class SchemaGenerator {
     propNames.forEach((propertyName: string) => {
       // Obtener metadatos
       const metadata = (
-        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, prototype, propertyName) ||
-        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, constructor, propertyName) ||
-        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, prototype, propertyName) ||
-        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, constructor, propertyName)
+        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, prototype as object, propertyName) ||
+        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, constructor as object, propertyName) ||
+        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, prototype as object, propertyName) ||
+        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, constructor as object, propertyName)
       ) as SwaggerMetadata | undefined;
 
-      const designType = Reflect.getMetadata('design:type', prototype, propertyName);
+      const designType = Reflect.getMetadata('design:type', prototype as object, propertyName);
 
       if (!metadata && !designType) return;
 
@@ -101,7 +101,7 @@ export class SchemaGenerator {
       // === Manejo de Enum ===
       if (meta.enum) {
         const enumValues = Array.isArray(meta.enum) ? meta.enum : Object.values(meta.enum);
-        propertySchema.enum = enumValues;
+        propertySchema.enum = enumValues as (string | number)[];
 
         // Inferir tipo del enum
         const firstValue = enumValues[0];
@@ -142,14 +142,14 @@ export class SchemaGenerator {
       if (meta.default !== undefined) propertySchema.default = meta.default;
 
       if (schema.properties) {
-        schema.properties[propertyName] = propertySchema;
+        (schema.properties as Record<string, JsonSchema>)[propertyName] = propertySchema;
       }
 
       // Generar ejemplo
       if (propertySchema.example !== undefined) {
-        if (schema.example) schema.example[propertyName] = propertySchema.example;
+        if (schema.example) (schema.example as Record<string, unknown>)[propertyName] = propertySchema.example;
       } else if (!propertySchema.enum) {
-        if (schema.example) schema.example[propertyName] = this.getDefaultExample(propertySchema.type);
+        if (schema.example) (schema.example as Record<string, unknown>)[propertyName] = this.getDefaultExample(propertySchema.type as string);
       }
 
       // Campo requerido
@@ -196,7 +196,7 @@ export class SchemaGenerator {
     if (type === BigInt) return { type: 'integer', format: 'int64' };
 
     // Clases personalizadas (recursivo)
-    if (typeof type === 'function' && ![Object, Array, Promise].includes(type as any)) {
+    if (typeof type === 'function' && ![Object, Array, Promise].includes(type as unknown as typeof Object)) {
       const nestedSchema = this.generate(type, visited);
       if (Object.keys(nestedSchema.properties || {}).length > 0) {
         return nestedSchema;

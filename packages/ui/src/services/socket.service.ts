@@ -15,7 +15,7 @@ export class SocketService {
       onConnect: () => void;
       onDisconnect: (reason: string) => void;
       onConnectError: (err: Error) => void;
-      onAny: (event: string, ...args: any[]) => void;
+      onAny: (event: string, ...args: unknown[]) => void;
     }
   ): Socket {
     if (this.sockets[gatewayName]) {
@@ -48,7 +48,7 @@ export class SocketService {
     }
   }
 
-  emit(gatewayName: string, event: string, payload: any, ack?: (response: any) => void) {
+  emit(gatewayName: string, event: string, payload: unknown, ack?: (response: unknown) => void) {
     const socket = this.sockets[gatewayName];
     if (!socket) throw new Error("Socket not connected");
     

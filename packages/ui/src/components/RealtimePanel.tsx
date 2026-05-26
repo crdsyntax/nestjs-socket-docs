@@ -3,9 +3,11 @@ import { RotateCcw } from "lucide-react";
 import LogsPanel from "./LogsPanel";
 import { translations } from "../locales/es";
 
+import { LogEntry } from "../types";
+
 interface RealtimePanelProps {
   connected: boolean;
-  logs: any[];
+  logs: LogEntry[];
   onClear: () => void;
   isPaused: boolean;
   onTogglePause: () => void;

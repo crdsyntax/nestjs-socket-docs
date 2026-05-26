@@ -3,7 +3,7 @@ import { ConnectedState, LogEntry, LogType } from "../types";
 import { socketService, SocketConfig } from "../services/socket.service";
 
 export interface UseSocketClientOptions extends SocketConfig {
-  auth?: Record<string, any>;
+  auth?: Record<string, unknown>;
 }
 
 const useSocketClient = (options: UseSocketClientOptions = {}) => {
@@ -53,7 +53,7 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
         setConnected((curr) => ({ ...curr, [gatewayName]: false }));
         addLog("error", `Connection Error: ${err.message}`);
       },
-      onAny: (event, ...args) => {
+      onAny: (event: string, ...args: unknown[]) => {
         addLog("received", `Event: ${event}`, args);
       },
     });

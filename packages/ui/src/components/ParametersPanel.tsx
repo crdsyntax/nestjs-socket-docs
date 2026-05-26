@@ -2,16 +2,18 @@ import React from "react";
 import { translations } from "../locales/es";
 import { Braces, Info, ChevronDown, ChevronRight } from "lucide-react";
 
+import { SocketDocsPayloadSchema } from "../types";
+
 interface ParametersPanelProps {
-  schema?: any;
-  responseSchema?: any;
+  schema?: SocketDocsPayloadSchema;
+  responseSchema?: SocketDocsPayloadSchema;
 }
 
 const ParametersPanel = ({ schema, responseSchema }: ParametersPanelProps) => {
   const [activeTab, setActiveTab] = React.useState<"request" | "response">("request");
   const [isExpanded, setIsExpanded] = React.useState(false);
   
-  const renderJsonSchema = (obj: any) => {
+  const renderJsonSchema = (obj: SocketDocsPayloadSchema | undefined) => {
     return JSON.stringify(obj, null, 2);
   };
 

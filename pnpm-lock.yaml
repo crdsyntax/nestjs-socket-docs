@@ -49,6 +49,9 @@ importers:
 
   packages/core:
     devDependencies:
+      '@crdsyntax/nestjs-socket-docs-ui':
+        specifier: workspace:*
+        version: link:../ui
       '@nestjs/common':
         specifier: ^10.0.0
         version: 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)

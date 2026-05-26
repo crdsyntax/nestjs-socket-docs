@@ -23,10 +23,10 @@ export interface JsonSchema {
     properties?: Record<string, JsonSchema>;
     items?: JsonSchema;
     required?: string[];
-    example?: any;
+    example?: unknown;
     description?: string;
-    enum?: any[];
+    enum?: unknown[];
     format?: string;
-    default?: any;
+    default?: unknown;
 }
 //# sourceMappingURL=schema.interface.d.ts.map

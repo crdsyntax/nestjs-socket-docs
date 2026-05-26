@@ -8,10 +8,10 @@ export declare class SocketService {
         onConnect: () => void;
         onDisconnect: (reason: string) => void;
         onConnectError: (err: Error) => void;
-        onAny: (event: string, ...args: any[]) => void;
+        onAny: (event: string, ...args: unknown[]) => void;
     }): Socket;
     disconnect(gatewayName: string): void;
-    emit(gatewayName: string, event: string, payload: any, ack?: (response: any) => void): void;
+    emit(gatewayName: string, event: string, payload: unknown, ack?: (response: unknown) => void): void;
     getSocket(gatewayName: string): Socket | undefined;
 }
 export declare const socketService: SocketService;

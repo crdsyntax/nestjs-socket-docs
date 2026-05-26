@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import GatewayPanel from "./GatewayPanel";
 import { translations } from "../locales/es";
 import { ChevronLeft, ChevronRight, LayoutGrid, Search, Download } from "lucide-react";
+import { SocketDocsGateway } from "../types";
 
 interface SidebarProps {
-  gateways: any[];
+  gateways: SocketDocsGateway[];
   activeGatewayIdx: number;
   activeEventIdx: number;
   onSelectGateway: (idx: number) => void;

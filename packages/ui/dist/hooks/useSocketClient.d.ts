@@ -1,7 +1,7 @@
 import { ConnectedState, LogEntry } from "../types";
 import { SocketConfig } from "../services/socket.service";
 export interface UseSocketClientOptions extends SocketConfig {
-    auth?: Record<string, any>;
+    auth?: Record<string, unknown>;
 }
 declare const useSocketClient: (options?: UseSocketClientOptions) => {
     connected: ConnectedState;

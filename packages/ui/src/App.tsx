@@ -16,13 +16,20 @@ const STORAGE_KEYS = {
   SOCKET: "socket_docs_socket_config"
 };
 
+interface SocketDocsWindow extends Window {
+  SOCKET_DOCS_CONFIG?: {
+    api?: Partial<ApiConfig>;
+    socket?: Partial<SocketConfig>;
+  };
+}
+
 const App = () => {
   const isStandalone = React.useMemo(() => {
     return !window.location.pathname.includes('socket-docs');
   }, []);
 
   const [apiConfig, setApiConfig] = React.useState<ApiConfig>(() => {
-    const external = (window as any).SOCKET_DOCS_CONFIG?.api || {};
+    const external = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG?.api || {};
     const saved = localStorage.getItem(STORAGE_KEYS.API);
     const parsedSaved = saved ? JSON.parse(saved) : {};
     
@@ -44,7 +51,7 @@ const App = () => {
   });
   
   const [socketConfig, setSocketConfig] = React.useState<SocketConfig>(() => {
-    const external = (window as any).SOCKET_DOCS_CONFIG?.socket;
+    const external = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG?.socket;
     const saved = localStorage.getItem(STORAGE_KEYS.SOCKET);
     const parsedSaved = saved ? JSON.parse(saved) : null;
 

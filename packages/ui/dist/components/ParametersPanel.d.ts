@@ -1,6 +1,7 @@
+import { SocketDocsPayloadSchema } from "../types";
 interface ParametersPanelProps {
-    schema?: any;
-    responseSchema?: any;
+    schema?: SocketDocsPayloadSchema;
+    responseSchema?: SocketDocsPayloadSchema;
 }
 declare const ParametersPanel: ({ schema, responseSchema }: ParametersPanelProps) => import("react/jsx-runtime").JSX.Element;
 export default ParametersPanel;
