@@ -30,8 +30,8 @@ const RealtimePanel = ({
   }, [logs, activeTab]);
 
   return (
-    <div className="mt-6 overflow-hidden rounded-lg border border-border-subtle bg-bg-surface">
-      <div className="flex items-center justify-between px-4 py-3">
+    <div className="flex flex-col rounded-lg border border-border-subtle bg-bg-surface">
+      <div className="flex flex-shrink-0 items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full ${connected ? "animate-pulse bg-brand-emerald" : "bg-text-muted"}`} />
@@ -83,7 +83,7 @@ const RealtimePanel = ({
           </button>
         </div>
       </div>
-      <div className="min-h-[200px] border-t border-border-subtle">
+      <div className="border-t border-border-subtle">
         <LogsPanel logs={isPaused ? [] : filteredLogs} onClear={onClear} />
       </div>
     </div>

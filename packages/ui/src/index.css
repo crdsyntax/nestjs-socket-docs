@@ -3,6 +3,27 @@
 @tailwind utilities;
 
 :root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-surface: #f1f5f9;
+  --bg-elevation: #e2e8f0;
+  --brand-emerald: #10b981;
+  --brand-emerald-dim: #d1fae5;
+  --brand-emerald-light: #34d399;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-subtle: #e2e8f0;
+  --method-post: #10b981;
+  --method-get: #3b82f6;
+  --method-patch: #f59e0b;
+  --method-delete: #ef4444;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  color-scheme: light;
+}
+
+.dark {
   --bg-primary: #0b0f12;
   --bg-secondary: #11161b;
   --bg-surface: #161d24;
@@ -14,12 +35,6 @@
   --text-secondary: #94a3b8;
   --text-muted: #475569;
   --border-subtle: #1e293b;
-  --method-post: #10b981;
-  --method-get: #3b82f6;
-  --method-patch: #f59e0b;
-  --method-delete: #ef4444;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   color-scheme: dark;
 }
 

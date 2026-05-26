@@ -69,6 +69,10 @@ const App = () => {
       auth: {
         token: "",
         userId: "",
+      },
+      eventRetries: {
+        attempts: 0,
+        delay: 1000,
       }
     };
 
@@ -232,7 +236,7 @@ const App = () => {
 
   const eventKey = activeGateway && activeEvent ? `${activeGateway.name}-${activeEvent.event}` : "";
   return (
-    <div className={`flex h-screen overflow-hidden font-sans text-text-primary ${theme === 'dark' ? 'bg-bg-primary' : 'bg-white text-gray-900'}`}>
+    <div className={`flex min-h-screen font-sans text-text-primary ${theme === 'dark' ? 'bg-bg-primary' : 'bg-white text-gray-900'}`}>
       <Sidebar
         gateways={filteredGateways}
         activeGatewayIdx={activeGatewayIdx}
@@ -246,7 +250,7 @@ const App = () => {
         onToggleExpand={toggleExpand}
       />
 
-      <main className="flex flex-1 flex-col overflow-hidden bg-bg-secondary">
+      <main className="flex flex-1 flex-col bg-bg-secondary">
         <MainHeader
           connected={activeGateway ? !!connected[activeGateway.name] : false}
           gatewayPath={activeGateway ? `${apiConfig.baseUrl.replace(/https?:\/\//, '')}${activeGateway.path}` : "ws://localhost:3000"}
@@ -259,36 +263,42 @@ const App = () => {
           onConnect={handleConnectToggle}
         />
 
-        <div className="flex flex-1 overflow-hidden p-4 md:p-6 gap-4 md:gap-6 flex-col lg:flex-row">
+        <div className="flex flex-1 p-4 md:p-6 gap-6 flex-col lg:flex-row">
           {activeGateway && activeEvent ? (
             <>
               {/* Left Column: Event Details and Execution */}
-              <div className="flex flex-[1.5] flex-col overflow-y-auto min-w-0 gap-6 custom-scrollbar pr-0 lg:pr-2 h-full">
-                <EventDetails
-                  gatewayName={activeGateway.name}
-                  eventName={activeEvent.event}
-                  summary={activeEvent.summary ?? ""}
-                  description={activeEvent.description ?? ""}
-                  auth={activeEvent.auth}
-                />
+              <div className="flex flex-[1.5] flex-col min-w-0 gap-6">
+                <div className="flex-shrink-0">
+                  <EventDetails
+                    gatewayName={activeGateway.name}
+                    eventName={activeEvent.event}
+                    summary={activeEvent.summary ?? ""}
+                    description={activeEvent.description ?? ""}
+                    auth={activeEvent.auth}
+                  />
+                </div>
 
-                <ParametersPanel
-                  schema={activeEvent.payloadSchema}
-                  responseSchema={activeEvent.responseSchema}
-                />
+                <div className="flex-shrink-0">
+                  <ParametersPanel
+                    schema={activeEvent.payloadSchema}
+                    responseSchema={activeEvent.responseSchema}
+                  />
+                </div>
 
-                <RequestBodyPanel
-                  payload={payloads[eventKey] ?? "{}"}
-                  schema={activeEvent.payloadSchema}
-                  responseSchema={activeEvent.responseSchema}
-                  emits={activeEvent.emits}
-                  onChange={(val) => setPayloads({ ...payloads, [eventKey]: val })}
-                  onSend={() => emitEvent(activeGateway.name, activeEvent.event, payloads[eventKey] ?? "{}")}
-                />
+                <div className="flex-shrink-0">
+                  <RequestBodyPanel
+                    payload={payloads[eventKey] ?? "{}"}
+                    schema={activeEvent.payloadSchema}
+                    responseSchema={activeEvent.responseSchema}
+                    emits={activeEvent.emits}
+                    onChange={(val) => setPayloads({ ...payloads, [eventKey]: val })}
+                    onSend={() => emitEvent(activeGateway.name, activeEvent.event, payloads[eventKey] ?? "{}")}
+                  />
+                </div>
               </div>
 
               {/* Right Column: Real-time Logs */}
-              <div className="flex flex-1 flex-col overflow-hidden border-t lg:border-t-0 lg:border-l border-border-subtle pt-6 lg:pt-0 lg:pl-6 min-h-[300px] lg:min-h-0">
+              <div className="flex flex-1 flex-col border-t lg:border-t-0 lg:border-l border-border-subtle pt-6 lg:pt-0 lg:pl-6">
                 <RealtimePanel
                   connected={!!connected[activeGateway.name]}
                   logs={logs}

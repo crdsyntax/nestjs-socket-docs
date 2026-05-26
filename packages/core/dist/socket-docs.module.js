@@ -39,7 +39,7 @@ class SocketDocsModule {
         server.start();
         return server;
     }
-    static async setup(app) {
+    static async setup(app, options = {}) {
         console.log("--- SocketDocsModule Setup ---");
         const explorer = this.createExplorer(app);
         if (!explorer)
@@ -53,7 +53,7 @@ class SocketDocsModule {
         }
         const schema = explorer.getSchema();
         this.logDiscovery(schema);
-        this.registerRoutes(app, explorer);
+        this.registerRoutes(app, explorer, options);
     }
     static createExplorer(app) {
         const container = app.container;
@@ -72,12 +72,34 @@ class SocketDocsModule {
             console.log(`  - Gateway: ${g.name}, Events: ${g.events.length}`);
         });
     }
-    static registerRoutes(app, explorer) {
+    static registerRoutes(app, explorer, options) {
         const httpAdapter = app.getHttpAdapter?.();
         if (!httpAdapter) {
             console.error("❌ [SocketDocs] Could not find HTTP adapter.");
             return;
         }
+        const checkAuth = (req, res) => {
+            if (!options.auth)
+                return true;
+            const authHeader = httpAdapter.getRequestHeader(req, "authorization");
+            if (!authHeader) {
+                httpAdapter.setHeader(res, "WWW-Authenticate", 'Basic realm="SocketDocs"');
+                httpAdapter.reply(res, "Unauthorized", 401);
+                return false;
+            }
+            const [type, credentials] = authHeader.split(" ");
+            if (type !== "Basic" || !credentials) {
+                httpAdapter.reply(res, "Unauthorized", 401);
+                return false;
+            }
+            const decoded = Buffer.from(credentials, "base64").toString("utf-8");
+            const [user, pass] = decoded.split(":");
+            if (user === options.auth.user && pass === options.auth.pass) {
+                return true;
+            }
+            httpAdapter.reply(res, "Unauthorized", 401);
+            return false;
+        };
         // Robust path resolution for ui-dist using require.resolve
         let uiDistPath = "";
         try {
@@ -96,11 +118,15 @@ class SocketDocsModule {
         }
         console.log(`[SocketDocs] UI Dist Path resolved to: ${uiDistPath}`);
         // JSON Endpoint
-        httpAdapter.get("/socket-docs/json", (_req, res) => {
+        httpAdapter.get("/socket-docs/json", (req, res) => {
+            if (!checkAuth(req, res))
+                return;
             return httpAdapter.reply(res, explorer.getSchema(), 200);
         });
         // UI Index
         httpAdapter.get("/socket-docs", (req, res) => {
+            if (!checkAuth(req, res))
+                return;
             const url = httpAdapter.getRequestUrl(req);
             if (!url.endsWith("/") && !url.includes(".")) {
                 return httpAdapter.redirect(res, 301, url + "/");
@@ -118,6 +144,8 @@ class SocketDocsModule {
         // Assets
         const assetRoute = "/socket-docs/assets/:file";
         httpAdapter.get(assetRoute, (req, res) => {
+            if (!checkAuth(req, res))
+                return;
             const params = req.params;
             const filename = params.file || "";
             const filePath = path.join(uiDistPath, "assets", filename);

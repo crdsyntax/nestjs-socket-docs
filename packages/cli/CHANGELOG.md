@@ -1,5 +1,45 @@
 # @crdsyntax/nestjs-socket-docs-cli
 
+## 2.3.6
+
+### Patch Changes
+
+- fix ui
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.3.6
+
+## 2.3.5
+
+### Patch Changes
+
+- fix ui
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.3.5
+
+## 2.3.4
+
+### Patch Changes
+
+- fix ui
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.3.4
+
+## 2.3.3
+
+### Patch Changes
+
+- fix ui
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.3.3
+
+## 2.3.2
+
+### Patch Changes
+
+- fix ui
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.3.2
+
 ## 2.3.1
 
 ### Patch Changes

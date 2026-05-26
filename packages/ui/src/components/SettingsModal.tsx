@@ -20,6 +20,10 @@ export interface SocketConfig {
     token: string;
     userId: string;
   };
+  eventRetries?: {
+    attempts: number;
+    delay: number;
+  };
 }
 
 interface SettingsModalProps {
@@ -265,6 +269,43 @@ const SettingsModal = ({
                       type="number"
                       value={tempSocketConfig.reconnectionDelayMax}
                       onChange={(e) => setTempSocketConfig({ ...tempSocketConfig, reconnectionDelayMax: parseInt(e.target.value) })}
+                      className={`w-full rounded border border-border-subtle p-2 text-sm outline-none transition-colors focus:border-brand-emerald ${theme === 'dark' ? 'bg-bg-secondary' : 'bg-gray-100'}`}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-sm font-semibold uppercase text-brand-emerald tracking-wider">Reintentos de Eventos</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-text-muted">Intentos</label>
+                    <input
+                      type="number"
+                      value={tempSocketConfig.eventRetries?.attempts ?? 0}
+                      onChange={(e) => setTempSocketConfig({ 
+                        ...tempSocketConfig, 
+                        eventRetries: { 
+                          attempts: parseInt(e.target.value), 
+                          delay: tempSocketConfig.eventRetries?.delay ?? 1000 
+                        } 
+                      })}
+                      className={`w-full rounded border border-border-subtle p-2 text-sm outline-none transition-colors focus:border-brand-emerald ${theme === 'dark' ? 'bg-bg-secondary' : 'bg-gray-100'}`}
+                      placeholder="0 = Sin reintentos"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-text-muted">Intervalo (ms)</label>
+                    <input
+                      type="number"
+                      value={tempSocketConfig.eventRetries?.delay ?? 1000}
+                      onChange={(e) => setTempSocketConfig({ 
+                        ...tempSocketConfig, 
+                        eventRetries: { 
+                          attempts: tempSocketConfig.eventRetries?.attempts ?? 0, 
+                          delay: parseInt(e.target.value) 
+                        } 
+                      })}
                       className={`w-full rounded border border-border-subtle p-2 text-sm outline-none transition-colors focus:border-brand-emerald ${theme === 'dark' ? 'bg-bg-secondary' : 'bg-gray-100'}`}
                     />
                   </div>

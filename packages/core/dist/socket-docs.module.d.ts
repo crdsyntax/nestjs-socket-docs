@@ -15,13 +15,19 @@ export interface RequestWithParams {
         file: string;
     };
 }
+export interface SocketDocsOptions {
+    auth?: {
+        user: string;
+        pass: string;
+    };
+}
 export declare class SocketDocsModule {
     /**
      * Start a standalone development server.
      * Useful for testing the UI with a specific schema.
      */
     static dev(schema: SocketDocsSchema, options?: StandaloneOptions): Promise<StandaloneServer>;
-    static setup(app: INestApplication | INestApplicationContext): Promise<void>;
+    static setup(app: INestApplication | INestApplicationContext, options?: SocketDocsOptions): Promise<void>;
     private static createExplorer;
     private static logDiscovery;
     private static registerRoutes;

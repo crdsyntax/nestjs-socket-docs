@@ -62,19 +62,39 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
   }, [addLog]);
 
   const emitEvent = useCallback((gatewayName: string, event: string, payload: string) => {
-// ...
-    try {
-      const parsedPayload = JSON.parse(payload);
-      addLog("sent", `Emitting ${event}`, parsedPayload);
+    const maxAttempts = (options as any).eventRetries?.attempts ?? 0;
+    const retryDelay = (options as any).eventRetries?.delay ?? 1000;
 
-      socketService.emit(gatewayName, event, parsedPayload, (ack: unknown) => {
-        addLog("received", `ACK for ${event}`, ack);
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Invalid JSON";
-      console.error(`Emit error: ${message}`);
-    }
-  }, [addLog]);
+    const attemptEmit = (currentAttempt: number) => {
+      try {
+        const parsedPayload = JSON.parse(payload);
+        const attemptLabel = currentAttempt > 0 ? ` (Reintento ${currentAttempt}/${maxAttempts})` : "";
+        addLog("sent", `Emitting ${event}${attemptLabel}`, parsedPayload);
+
+        let ackReceived = false;
+        const timer = setTimeout(() => {
+          if (!ackReceived && currentAttempt < maxAttempts) {
+            addLog("error", `Timeout esperando ACK para ${event}. Reintentando en ${retryDelay}ms...`);
+            setTimeout(() => attemptEmit(currentAttempt + 1), retryDelay);
+          } else if (!ackReceived && maxAttempts > 0) {
+            addLog("error", `Fallo final: No se recibió ACK para ${event} después de ${maxAttempts} reintentos.`);
+          }
+        }, options.options?.timeout ?? 20000);
+
+        socketService.emit(gatewayName, event, parsedPayload, (ack: unknown) => {
+          ackReceived = true;
+          clearTimeout(timer);
+          addLog("received", `ACK for ${event}`, ack);
+        });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Invalid JSON";
+        console.error(`Emit error: ${message}`);
+        addLog("error", `Error de emisión: ${message}`);
+      }
+    };
+
+    attemptEmit(0);
+  }, [options, addLog]);
 
   const clearLogs = useCallback(() => {
     setLogs([]);

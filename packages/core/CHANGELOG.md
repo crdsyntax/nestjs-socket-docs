@@ -1,5 +1,35 @@
 # @crdsyntax/nestjs-socket-docs
 
+## 2.3.6
+
+### Patch Changes
+
+- fix ui
+
+## 2.3.5
+
+### Patch Changes
+
+- fix ui
+
+## 2.3.4
+
+### Patch Changes
+
+- fix ui
+
+## 2.3.3
+
+### Patch Changes
+
+- fix ui
+
+## 2.3.2
+
+### Patch Changes
+
+- fix ui
+
 ## 2.3.1
 
 ### Patch Changes

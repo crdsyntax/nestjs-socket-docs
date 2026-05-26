@@ -17,6 +17,10 @@ export interface SocketConfig {
         token: string;
         userId: string;
     };
+    eventRetries?: {
+        attempts: number;
+        delay: number;
+    };
 }
 interface SettingsModalProps {
     show: boolean;

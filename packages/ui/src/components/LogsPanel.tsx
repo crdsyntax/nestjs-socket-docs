@@ -16,7 +16,7 @@ const LogsPanel = ({ logs }: LogsPanelProps) => {
   }
 
   return (
-    <div className="max-h-[400px] space-y-2 overflow-y-auto p-4">
+    <div className="space-y-2 p-4">
       {logs.map((log) => (
         <div
           key={log.id}
@@ -36,7 +36,7 @@ const LogsPanel = ({ logs }: LogsPanelProps) => {
             <span className="text-[10px] text-text-muted">{log.timestamp}</span>
           </div>
           {log.data != null && (
-            <pre className="overflow-x-auto rounded border border-border-subtle bg-bg-secondary p-2 font-mono text-text-primary">
+            <pre className="whitespace-pre-wrap break-all overflow-x-hidden rounded border border-border-subtle bg-bg-secondary p-2 font-mono text-text-primary">
               {JSON.stringify(log.data, null, 2)}
             </pre>
           )}

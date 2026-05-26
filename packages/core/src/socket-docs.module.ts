@@ -22,6 +22,13 @@ export interface RequestWithParams {
   params: { file: string };
 }
 
+export interface SocketDocsOptions {
+  auth?: {
+    user: string;
+    pass: string;
+  };
+}
+
 export class SocketDocsModule {
   /**
    * Start a standalone development server.
@@ -33,7 +40,7 @@ export class SocketDocsModule {
     return server;
   }
 
-  static async setup(app: INestApplication | INestApplicationContext): Promise<void> {
+  static async setup(app: INestApplication | INestApplicationContext, options: SocketDocsOptions = {}): Promise<void> {
     console.log("--- SocketDocsModule Setup ---");
 
     const explorer = this.createExplorer(app);
@@ -49,7 +56,7 @@ export class SocketDocsModule {
     const schema = explorer.getSchema();
     this.logDiscovery(schema);
 
-    this.registerRoutes(app, explorer);
+    this.registerRoutes(app, explorer, options);
   }
 
   private static createExplorer(app: INestApplication | INestApplicationContext): SocketExplorerService | null {
@@ -73,12 +80,39 @@ export class SocketDocsModule {
     });
   }
 
-  private static registerRoutes(app: INestApplication | INestApplicationContext, explorer: SocketExplorerService): void {
+  private static registerRoutes(app: INestApplication | INestApplicationContext, explorer: SocketExplorerService, options: SocketDocsOptions): void {
     const httpAdapter = (app as INestApplication).getHttpAdapter?.();
     if (!httpAdapter) {
       console.error("❌ [SocketDocs] Could not find HTTP adapter.");
       return;
     }
+
+    const checkAuth = (req: unknown, res: unknown): boolean => {
+      if (!options.auth) return true;
+
+      const authHeader = (httpAdapter as any).getRequestHeader(req, "authorization");
+      if (!authHeader) {
+        httpAdapter.setHeader(res, "WWW-Authenticate", 'Basic realm="SocketDocs"');
+        (httpAdapter as any).reply(res, "Unauthorized", 401);
+        return false;
+      }
+
+      const [type, credentials] = authHeader.split(" ");
+      if (type !== "Basic" || !credentials) {
+        (httpAdapter as any).reply(res, "Unauthorized", 401);
+        return false;
+      }
+
+      const decoded = Buffer.from(credentials, "base64").toString("utf-8");
+      const [user, pass] = decoded.split(":");
+
+      if (user === options.auth.user && pass === options.auth.pass) {
+        return true;
+      }
+
+      (httpAdapter as any).reply(res, "Unauthorized", 401);
+      return false;
+    };
 
     // Robust path resolution for ui-dist using require.resolve
     let uiDistPath = "";
@@ -99,12 +133,15 @@ export class SocketDocsModule {
     console.log(`[SocketDocs] UI Dist Path resolved to: ${uiDistPath}`);
 
     // JSON Endpoint
-    httpAdapter.get("/socket-docs/json", (_req: unknown, res: unknown) => {
+    httpAdapter.get("/socket-docs/json", (req: unknown, res: unknown) => {
+      if (!checkAuth(req, res)) return;
       return (httpAdapter as any).reply(res, explorer.getSchema(), 200);
     });
 
     // UI Index
     httpAdapter.get("/socket-docs", (req: unknown, res: unknown) => {
+      if (!checkAuth(req, res)) return;
+      
       const url: string = (httpAdapter as any).getRequestUrl(req);
       if (!url.endsWith("/") && !url.includes(".")) {
         return httpAdapter.redirect(res, 301, url + "/");
@@ -123,6 +160,8 @@ export class SocketDocsModule {
     // Assets
     const assetRoute = "/socket-docs/assets/:file";
     httpAdapter.get(assetRoute, (req: RequestWithParams, res: unknown) => {
+      if (!checkAuth(req, res)) return;
+
       const params = req.params as Record<string, string | undefined>;
       const filename = params.file || "";
       const filePath = path.join(uiDistPath, "assets", filename);
