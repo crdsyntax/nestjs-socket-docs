@@ -1,6 +1,13 @@
 # @crdsyntax/nestjs-socket-docs
 
+## 1.0.0
+
+### Major Changes
+
+- se arreglo la ui y vamos a ver si compila y se via npm
+
 <<<<<<< HEAD
+
 ## 4.0.0
 
 ### Major Changes
@@ -20,7 +27,9 @@
 - c6b8619: fix names
 
 =======
->>>>>>> parent of 27cd563 (fix)
+
+> > > > > > > parent of 27cd563 (fix)
+
 ## 1.0.0
 
 ### Major Changes
