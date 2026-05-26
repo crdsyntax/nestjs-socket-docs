@@ -34,24 +34,24 @@ class SocketExplorerService {
             if (!instance)
                 return;
             const prototype = Object.getPrototypeOf(instance);
-            const controllerMetadata = this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
-            let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor) ||
-                Reflect.getMetadata('websockets:gateway_metadata', instance.constructor);
-            const gatewayNamespace = Reflect.getMetadata('websockets:namespace', instance.constructor);
+            const constructor = instance.constructor;
+            const controllerMetadata = this.reflector.get(metadata_constants_1.SOCKET_CONTROLLER_METADATA, constructor) || {};
+            let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', constructor) ||
+                Reflect.getMetadata('websockets:gateway_metadata', constructor);
+            const gatewayNamespace = Reflect.getMetadata('websockets:namespace', constructor);
             if (!gatewayMetadata) {
                 gatewayMetadata = {};
             }
             const namespace = controllerMetadata.name || gatewayNamespace || gatewayMetadata.namespace || '/';
             const path = gatewayMetadata.path || '/socket.io';
-            console.log(`[SocketDocs] Exploring gateway: ${instance.constructor.name} (ns: ${namespace}, path: ${path})`);
+            console.log(`[SocketDocs] Exploring gateway: ${constructor.name} (ns: ${namespace}, path: ${path})`);
             const gatewaySchema = {
-                name: instance.constructor.name,
+                name: constructor.name,
                 namespace,
                 path,
                 description: controllerMetadata.description,
                 events: []
             };
-            // Get all method names from prototype to be more robust across NestJS versions
             const methodNames = this.metadataScanner.getAllMethodNames(prototype);
             methodNames.forEach(methodName => {
                 const method = instance[methodName];
@@ -69,42 +69,34 @@ class SocketExplorerService {
                         summary: eventMetadata?.summary || `Event: ${eventName}`,
                         description: eventMetadata?.description,
                         emits: eventMetadata?.emits,
+                        auth: eventMetadata?.auth,
                         methodName
                     };
                     if (eventMetadata?.response) {
                         eventEntry.responseSchema = schema_generator_1.SchemaGenerator.generate(eventMetadata.response);
                     }
-                    // 0. Try to get payload from decorator option (payload: Dto)
                     if (eventMetadata?.payload) {
-                        console.log(`[SocketDocs] Method ${methodName} - Found DTO via @SocketEvent({ payload })`);
                         eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(eventMetadata.payload);
                     }
-                    // 1. Try to get payload from custom decorator (SocketPayload)
-                    // Only if not already found via option
                     if (!eventEntry.payloadSchema) {
-                        let payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, prototype, methodName);
-                        // 2. Try to find MessageBody parameter index
+                        const payloadMetadata = Reflect.getMetadata(metadata_constants_1.SOCKET_PAYLOAD_METADATA, prototype, methodName);
                         const messageBodyIndex = Reflect.getMetadata('websockets:message_body', prototype, methodName);
-                        // 3. Fallback to design:paramtypes
                         const paramTypes = Reflect.getMetadata('design:paramtypes', prototype, methodName);
                         if (payloadMetadata && Array.isArray(payloadMetadata)) {
                             const dto = payloadMetadata.find(d => d && typeof d === 'function' &&
                                 !this.isPrimitive(d) && !this.isSocketType(d));
-                            console.log(`[SocketDocs] Method ${methodName} - Found DTO via SocketPayload:`, dto?.name);
                             if (dto)
                                 eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
                         }
-                        else if (messageBodyIndex !== undefined && paramTypes && paramTypes[messageBodyIndex]) {
+                        else if (messageBodyIndex !== undefined && Array.isArray(paramTypes) && paramTypes[messageBodyIndex]) {
                             const dto = paramTypes[messageBodyIndex];
-                            console.log(`[SocketDocs] Method ${methodName} - Found DTO via MessageBody:`, dto?.name);
                             if (dto && typeof dto === 'function' && !this.isPrimitive(dto) && !this.isSocketType(dto)) {
                                 eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
                             }
                         }
-                        else if (paramTypes && Array.isArray(paramTypes)) {
+                        else if (Array.isArray(paramTypes)) {
                             const dto = paramTypes.find(d => d && typeof d === 'function' &&
                                 !this.isPrimitive(d) && !this.isSocketType(d));
-                            console.log(`[SocketDocs] Method ${methodName} - Found DTO via design:paramtypes:`, dto?.name);
                             if (dto)
                                 eventEntry.payloadSchema = schema_generator_1.SchemaGenerator.generate(dto);
                         }
@@ -116,13 +108,15 @@ class SocketExplorerService {
         });
     }
     isPrimitive(type) {
-        return [String, Number, Boolean, Array, Object, Date].includes(type);
+        const primitives = [String, Number, Boolean, Array, Object, Date];
+        return primitives.some(p => p === type);
     }
     isSocketType(type) {
-        if (!type || !type.name)
+        const t = type;
+        if (!t || !t.name)
             return false;
         const socketTypes = ['Socket', 'Server', 'Namespace', 'Adapter', 'EventEmitter'];
-        return socketTypes.includes(type.name);
+        return socketTypes.includes(t.name);
     }
 }
 exports.SocketExplorerService = SocketExplorerService;

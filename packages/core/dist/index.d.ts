@@ -1,8 +1,10 @@
 export * from './constants/metadata.constants';
 export * from './constants/config';
+export * from './interfaces/schema.interface';
 export * from './decorators/socket-controller.decorator';
 export * from './decorators/socket-event.decorator';
 export * from './decorators/socket-payload.decorator';
 export * from './explorer/socket-explorer.service';
 export * from './socket-docs.module';
+export * from './runtime/standalone';
 //# sourceMappingURL=index.d.ts.map

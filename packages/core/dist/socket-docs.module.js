@@ -26,20 +26,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SocketDocsModule = void 0;
 const core_1 = require("@nestjs/core");
 const socket_explorer_service_1 = require("./explorer/socket-explorer.service");
+const standalone_1 = require("./runtime/standalone");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 class SocketDocsModule {
+    /**
+     * Start a standalone development server.
+     * Useful for testing the UI with a specific schema.
+     */
+    static async dev(schema, options = {}) {
+        const server = new standalone_1.StandaloneServer(schema, options);
+        server.start();
+        return server;
+    }
     static async setup(app) {
         console.log("--- SocketDocsModule Setup ---");
-        const container = app.container;
-        if (!container) {
-            console.error("❌ [SocketDocs] Could not find NestJS container.");
+        const explorer = this.createExplorer(app);
+        if (!explorer)
             return;
-        }
-        const modules = container.getModules();
-        const metadataScanner = new core_1.MetadataScanner();
-        const reflector = new core_1.Reflector();
-        const explorer = new socket_explorer_service_1.SocketExplorerService(modules, metadataScanner, reflector);
         console.log("[SocketDocs] Exploring modules...");
         try {
             explorer.explore();
@@ -47,64 +51,73 @@ class SocketDocsModule {
         catch (err) {
             console.error("❌ [SocketDocs] Error during module exploration:", err);
         }
-        const uiDistPath = path.resolve(__dirname, "../ui-dist");
-        console.log(`[SocketDocs] UI distribution path: ${uiDistPath}`);
         const schema = explorer.getSchema();
+        this.logDiscovery(schema);
+        this.registerRoutes(app, explorer);
+    }
+    static createExplorer(app) {
+        const container = app.container;
+        if (!container) {
+            console.error("❌ [SocketDocs] Could not find NestJS container.");
+            return null;
+        }
+        const modules = container.getModules();
+        const metadataScanner = new core_1.MetadataScanner();
+        const reflector = new core_1.Reflector();
+        return new socket_explorer_service_1.SocketExplorerService(modules, metadataScanner, reflector);
+    }
+    static logDiscovery(schema) {
         console.log(`[SocketDocs] Found ${schema.gateways.length} gateways.`);
         schema.gateways.forEach((g) => {
             console.log(`  - Gateway: ${g.name}, Events: ${g.events.length}`);
         });
-        const httpAdapter = app.getHttpAdapter();
-        if (httpAdapter) {
-            // JSON Endpoint
-            httpAdapter.get("/socket-docs/json", (req, res) => {
-                console.log(`[SocketDocs] Serving schema to: ${httpAdapter.getRequestUrl(req)}`);
-                return httpAdapter.reply(res, explorer.getSchema(), 200);
-            });
-            // UI Index
-            httpAdapter.get("/socket-docs", (req, res) => {
-                const url = httpAdapter.getRequestUrl(req);
-                if (!url.endsWith("/")) {
-                    return httpAdapter.redirect(res, 301, url + "/");
-                }
-                const indexPath = path.join(uiDistPath, "index.html");
-                if (fs.existsSync(indexPath)) {
-                    const content = fs.readFileSync(indexPath, "utf-8");
-                    httpAdapter.setHeader(res, "Content-Type", "text/html");
-                    return httpAdapter.reply(res, content, 200);
-                }
-                else {
-                    console.error(`[SocketDocs] UI Index not found at: ${indexPath}`);
-                    return httpAdapter.reply(res, "UI not found. Make sure @nestjs-socket-docs/ui is built.", 404);
-                }
-            });
-            // Assets
-            httpAdapter.get("/socket-docs/assets/:file", (req, res) => {
-                const assetPath = req.params.file;
-                const filePath = path.resolve(uiDistPath, "assets", assetPath);
-                if (fs.existsSync(filePath)) {
-                    console.log(`[SocketDocs] Serving asset: ${assetPath}`);
-                    // Note: Express sendFile is usually fine, but let's try to be safe
-                    if (typeof res.sendFile === 'function') {
-                        return res.sendFile(filePath);
-                    }
-                    // Fallback for non-express adapters (though user is on Express)
-                    const content = fs.readFileSync(filePath);
-                    const ext = path.extname(filePath);
-                    const mime = ext === '.js' ? 'application/javascript' : ext === '.css' ? 'text/css' : 'application/octet-stream';
-                    httpAdapter.setHeader(res, "Content-Type", mime);
-                    return httpAdapter.reply(res, content, 200);
-                }
-                else {
-                    console.error(`[SocketDocs] Asset not found at: ${filePath}`);
-                    return httpAdapter.reply(res, "Asset not found", 404);
-                }
-            });
-            console.log("🚀 Socket Docs available at /socket-docs");
-        }
-        else {
+    }
+    static registerRoutes(app, explorer) {
+        const httpAdapter = app.getHttpAdapter?.();
+        if (!httpAdapter) {
             console.error("❌ [SocketDocs] Could not find HTTP adapter.");
+            return;
         }
+        const uiDistPath = path.resolve(__dirname, "../ui-dist");
+        // JSON Endpoint
+        httpAdapter.get("/socket-docs/json", (_req, res) => {
+            return httpAdapter.reply(res, explorer.getSchema(), 200);
+        });
+        // UI Index
+        httpAdapter.get("/socket-docs", (req, res) => {
+            const url = httpAdapter.getRequestUrl(req);
+            if (!url.endsWith("/")) {
+                return httpAdapter.redirect(res, 301, url + "/");
+            }
+            const indexPath = path.join(uiDistPath, "index.html");
+            if (fs.existsSync(indexPath)) {
+                const content = fs.readFileSync(indexPath, "utf-8");
+                httpAdapter.setHeader(res, "Content-Type", "text/html");
+                return httpAdapter.reply(res, content, 200);
+            }
+            else {
+                return httpAdapter.reply(res, "UI not found. Build the UI package first.", 404);
+            }
+        });
+        // Assets
+        httpAdapter.get("/socket-docs/assets/:file", (req, res) => {
+            const assetPath = req.params.file;
+            const filePath = path.resolve(uiDistPath, "assets", assetPath);
+            if (fs.existsSync(filePath)) {
+                if (typeof res.sendFile === 'function') {
+                    return res.sendFile(filePath);
+                }
+                const content = fs.readFileSync(filePath);
+                const ext = path.extname(filePath);
+                const mime = ext === '.js' ? 'application/javascript' : ext === '.css' ? 'text/css' : 'application/octet-stream';
+                httpAdapter.setHeader(res, "Content-Type", mime);
+                return httpAdapter.reply(res, content, 200);
+            }
+            else {
+                return httpAdapter.reply(res, "Asset not found", 404);
+            }
+        });
+        console.log("🚀 Socket Docs available at /socket-docs");
     }
 }
 exports.SocketDocsModule = SocketDocsModule;

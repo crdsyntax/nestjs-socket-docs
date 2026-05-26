@@ -7,6 +7,7 @@ declare const useSocketClient: (options?: UseSocketClientOptions) => {
     connected: ConnectedState;
     logs: LogEntry[];
     connect: (gatewayName: string, namespace: string, path?: string) => void;
+    disconnect: (gatewayName: string, namespace?: string) => void;
     emitEvent: (gatewayName: string, event: string, payload: string) => void;
     clearLogs: () => void;
 };

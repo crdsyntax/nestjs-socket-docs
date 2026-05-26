@@ -9,7 +9,11 @@ export interface LogEntry {
 }
 
 export interface SocketDocsPayloadSchema {
+  type: string;
+  properties?: Record<string, any>;
+  required?: string[];
   example?: unknown;
+  description?: string;
 }
 
 export interface SocketDocsEvent {
@@ -19,6 +23,7 @@ export interface SocketDocsEvent {
   payloadSchema?: SocketDocsPayloadSchema;
   responseSchema?: any;
   emits?: string;
+  auth?: 'JWT' | 'API_KEY' | 'BASIC' | 'NONE';
 }
 
 export interface SocketDocsGateway {

@@ -1,23 +1,25 @@
 import { MetadataScanner, Reflector } from '@nestjs/core';
 import { SOCKET_CONTROLLER_METADATA, SOCKET_EVENT_METADATA, SOCKET_PAYLOAD_METADATA } from '../constants/metadata.constants';
 import { SchemaGenerator } from '../schema-generator/schema-generator';
+import { SocketDocsSchema, GatewaySchema, EventSchema } from '../interfaces/schema.interface';
+import { NestModule } from '../socket-docs.module';
 
 export class SocketExplorerService {
-  private schema: any = {
+  private schema: SocketDocsSchema = {
     gateways: []
   };
 
   constructor(
-    private readonly modules: Map<any, any>,
+    private readonly modules: Map<string, NestModule>,
     private readonly metadataScanner: MetadataScanner,
     private readonly reflector: Reflector,
   ) {}
 
-  getSchema() {
+  getSchema(): SocketDocsSchema {
     return this.schema;
   }
 
-  explore() {
+  explore(): void {
     const modulesArray = [...this.modules.values()];
     const providers = modulesArray.flatMap(module => [...module.providers.values()]);
     
@@ -35,36 +37,36 @@ export class SocketExplorerService {
       const { instance } = wrapper;
       if (!instance) return;
       const prototype = Object.getPrototypeOf(instance);
+      const constructor = instance.constructor;
       
-      const controllerMetadata = this.reflector.get(SOCKET_CONTROLLER_METADATA, instance.constructor) || {};
+      const controllerMetadata = this.reflector.get(SOCKET_CONTROLLER_METADATA, constructor) || {};
       
-      let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', instance.constructor) || 
-                            Reflect.getMetadata('websockets:gateway_metadata', instance.constructor);
+      let gatewayMetadata = this.reflector.get('websockets:gateway_metadata', constructor) || 
+                            Reflect.getMetadata('websockets:gateway_metadata', constructor);
       
-      const gatewayNamespace = Reflect.getMetadata('websockets:namespace', instance.constructor);
+      const gatewayNamespace = Reflect.getMetadata('websockets:namespace', constructor);
       
       if (!gatewayMetadata) {
         gatewayMetadata = {};
       }
       
-      const namespace = controllerMetadata.name || gatewayNamespace || gatewayMetadata.namespace || '/';
-      const path = gatewayMetadata.path || '/socket.io';
+      const namespace: string = controllerMetadata.name || gatewayNamespace || gatewayMetadata.namespace || '/';
+      const path: string = gatewayMetadata.path || '/socket.io';
       
-      console.log(`[SocketDocs] Exploring gateway: ${instance.constructor.name} (ns: ${namespace}, path: ${path})`);
+      console.log(`[SocketDocs] Exploring gateway: ${constructor.name} (ns: ${namespace}, path: ${path})`);
       
-      const gatewaySchema: any = {
-        name: instance.constructor.name,
+      const gatewaySchema: GatewaySchema = {
+        name: constructor.name,
         namespace,
         path,
         description: controllerMetadata.description,
         events: []
       };
 
-      // Get all method names from prototype to be more robust across NestJS versions
       const methodNames = this.metadataScanner.getAllMethodNames(prototype);
       
       methodNames.forEach(methodName => {
-          const method = instance[methodName];
+          const method = (instance as Record<string, unknown>)[methodName];
           if (typeof method !== 'function') return;
 
           const eventMetadata = this.reflector.get(SOCKET_EVENT_METADATA, method) || 
@@ -73,13 +75,14 @@ export class SocketExplorerService {
                                    Reflect.getMetadata('websockets:subscribe_message', method);
           
           if (eventMetadata || subscribeMetadata) {
-            const eventName = eventMetadata?.event || subscribeMetadata;
+            const eventName: string = eventMetadata?.event || subscribeMetadata;
             console.log(`[SocketDocs]   Found event: ${eventName} in method: ${methodName}`);
-            const eventEntry: any = {
+            const eventEntry: EventSchema = {
               event: eventName,
               summary: eventMetadata?.summary || `Event: ${eventName}`,
               description: eventMetadata?.description,
               emits: eventMetadata?.emits,
+              auth: eventMetadata?.auth,
               methodName
             };
 
@@ -87,21 +90,13 @@ export class SocketExplorerService {
               eventEntry.responseSchema = SchemaGenerator.generate(eventMetadata.response);
             }
 
-            // 0. Try to get payload from decorator option (payload: Dto)
             if (eventMetadata?.payload) {
-              console.log(`[SocketDocs] Method ${methodName} - Found DTO via @SocketEvent({ payload })`);
               eventEntry.payloadSchema = SchemaGenerator.generate(eventMetadata.payload);
             }
 
-            // 1. Try to get payload from custom decorator (SocketPayload)
-            // Only if not already found via option
             if (!eventEntry.payloadSchema) {
-              let payloadMetadata = Reflect.getMetadata(SOCKET_PAYLOAD_METADATA, prototype, methodName);
-              
-              // 2. Try to find MessageBody parameter index
+              const payloadMetadata = Reflect.getMetadata(SOCKET_PAYLOAD_METADATA, prototype, methodName);
               const messageBodyIndex = Reflect.getMetadata('websockets:message_body', prototype, methodName);
-
-              // 3. Fallback to design:paramtypes
               const paramTypes = Reflect.getMetadata('design:paramtypes', prototype, methodName);
 
               if (payloadMetadata && Array.isArray(payloadMetadata)) {
@@ -109,20 +104,17 @@ export class SocketExplorerService {
                   d && typeof d === 'function' && 
                   !this.isPrimitive(d) && !this.isSocketType(d)
                 );
-                console.log(`[SocketDocs] Method ${methodName} - Found DTO via SocketPayload:`, dto?.name);
                 if (dto) eventEntry.payloadSchema = SchemaGenerator.generate(dto);
-              } else if (messageBodyIndex !== undefined && paramTypes && paramTypes[messageBodyIndex]) {
+              } else if (messageBodyIndex !== undefined && Array.isArray(paramTypes) && paramTypes[messageBodyIndex]) {
                 const dto = paramTypes[messageBodyIndex];
-                console.log(`[SocketDocs] Method ${methodName} - Found DTO via MessageBody:`, dto?.name);
                 if (dto && typeof dto === 'function' && !this.isPrimitive(dto) && !this.isSocketType(dto)) {
                   eventEntry.payloadSchema = SchemaGenerator.generate(dto);
                 }
-              } else if (paramTypes && Array.isArray(paramTypes)) {
+              } else if (Array.isArray(paramTypes)) {
                 const dto = paramTypes.find(d => 
                   d && typeof d === 'function' && 
                   !this.isPrimitive(d) && !this.isSocketType(d)
                 );
-                console.log(`[SocketDocs] Method ${methodName} - Found DTO via design:paramtypes:`, dto?.name);
                 if (dto) eventEntry.payloadSchema = SchemaGenerator.generate(dto);
               }
             }
@@ -136,13 +128,15 @@ export class SocketExplorerService {
     });
   }
 
-  private isPrimitive(type: any): boolean {
-    return [String, Number, Boolean, Array, Object, Date].includes(type);
+  private isPrimitive(type: unknown): boolean {
+    const primitives = [String, Number, Boolean, Array, Object, Date];
+    return primitives.some(p => p === type);
   }
 
-  private isSocketType(type: any): boolean {
-    if (!type || !type.name) return false;
+  private isSocketType(type: unknown): boolean {
+    const t = type as { name?: string };
+    if (!t || !t.name) return false;
     const socketTypes = ['Socket', 'Server', 'Namespace', 'Adapter', 'EventEmitter'];
-    return socketTypes.includes(type.name);
+    return socketTypes.includes(t.name);
   }
 }

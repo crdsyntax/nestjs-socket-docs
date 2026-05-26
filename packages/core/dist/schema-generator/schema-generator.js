@@ -30,8 +30,8 @@ class SchemaGenerator {
         let currentProto = prototype;
         while (currentProto && currentProto !== Object.prototype) {
             // Metadatos de Swagger (array)
-            const arrayMeta = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, currentProto) ||
-                Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, currentProto) || [];
+            const arrayMeta = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, currentProto) ||
+                Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, currentProto) || []);
             arrayMeta.forEach((p) => propNames.add(p.replace(/^:/, '')));
             // Propiedades del prototipo
             Object.getOwnPropertyNames(currentProto)
@@ -40,8 +40,8 @@ class SchemaGenerator {
             currentProto = Object.getPrototypeOf(currentProto);
         }
         // 2. Metadatos en el constructor
-        const constArrayMeta = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, constructor) ||
-            Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, constructor) || [];
+        const constArrayMeta = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, constructor) ||
+            Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, constructor) || []);
         constArrayMeta.forEach((p) => propNames.add(p.replace(/^:/, '')));
         // 3. Soporte al Swagger CLI Plugin (_METADATA_FACTORY)
         if (constructor && typeof constructor._METADATA_FACTORY === 'function') {
@@ -64,15 +64,15 @@ class SchemaGenerator {
         // Procesar cada propiedad
         propNames.forEach((propertyName) => {
             // Obtener metadatos
-            let metadata = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, prototype, propertyName) ||
+            const metadata = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, prototype, propertyName) ||
                 Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, constructor, propertyName) ||
                 Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, prototype, propertyName) ||
-                Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, constructor, propertyName);
+                Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, constructor, propertyName));
             const designType = Reflect.getMetadata('design:type', prototype, propertyName);
             if (!metadata && !designType)
                 return;
             const meta = metadata || {};
-            const propertySchema = {};
+            const propertySchema = { type: 'object' };
             // === Manejo de Enum ===
             if (meta.enum) {
                 const enumValues = Array.isArray(meta.enum) ? meta.enum : Object.values(meta.enum);
@@ -95,7 +95,7 @@ class SchemaGenerator {
                 if (meta.example !== undefined) {
                     propertySchema.example = Array.isArray(meta.example) ? meta.example : [meta.example];
                 }
-                else if (propertySchema.items.example !== undefined) {
+                else if (propertySchema.items?.example !== undefined) {
                     propertySchema.example = [propertySchema.items.example];
                 }
             }
@@ -112,13 +112,17 @@ class SchemaGenerator {
                 propertySchema.description = meta.description;
             if (meta.default !== undefined)
                 propertySchema.default = meta.default;
-            schema.properties[propertyName] = propertySchema;
+            if (schema.properties) {
+                schema.properties[propertyName] = propertySchema;
+            }
             // Generar ejemplo
             if (propertySchema.example !== undefined) {
-                schema.example[propertyName] = propertySchema.example;
+                if (schema.example)
+                    schema.example[propertyName] = propertySchema.example;
             }
             else if (!propertySchema.enum) {
-                schema.example[propertyName] = this.getDefaultExample(propertySchema.type);
+                if (schema.example)
+                    schema.example[propertyName] = this.getDefaultExample(propertySchema.type);
             }
             // Campo requerido
             if (meta.required === true) {
@@ -128,10 +132,10 @@ class SchemaGenerator {
         if (required.length > 0) {
             schema.required = required;
         }
-        if (Object.keys(schema.example).length === 0) {
+        if (Object.keys(schema.example || {}).length === 0) {
             delete schema.example;
         }
-        if (Object.keys(schema.properties).length === 0) {
+        if (Object.keys(schema.properties || {}).length === 0) {
             return { type: 'object' };
         }
         return schema;

@@ -1,14 +1,58 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SocketDocsData } from "../types";
 
+const STORAGE_KEYS = {
+  THEME: "socket_docs_theme",
+  GATEWAY_IDX: "socket_docs_gateway_idx",
+  EVENT_IDX: "socket_docs_event_idx",
+  SEARCH: "socket_docs_search",
+};
+
 export const useAppLogic = (data: SocketDocsData | null) => {
-  const [activeGatewayIdx, setActiveGatewayIdx] = useState(0);
-  const [activeEventIdx, setActiveEventIdx] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeGatewayIdx, setActiveGatewayIdx] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.GATEWAY_IDX);
+    return saved ? parseInt(saved) : 0;
+  });
+
+  const [activeEventIdx, setActiveEventIdx] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.EVENT_IDX);
+    return saved ? parseInt(saved) : 0;
+  });
+
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.SEARCH) || "";
+  });
+
   const [isPaused, setIsPaused] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem(STORAGE_KEYS.THEME) as "dark" | "light") || "dark";
+  });
+
+  // Persist changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.GATEWAY_IDX, activeGatewayIdx.toString());
+  }, [activeGatewayIdx]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EVENT_IDX, activeEventIdx.toString());
+  }, [activeEventIdx]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SEARCH, searchQuery);
+  }, [searchQuery]);
 
   const filteredGateways = useMemo(() => {
+// ... (rest of filtering logic)
     if (!data) return [];
     if (!searchQuery) return data.gateways;
 
@@ -26,10 +70,10 @@ export const useAppLogic = (data: SocketDocsData | null) => {
 
   const toggleTheme = () => {
     setTheme(prev => prev === "dark" ? "light" : "dark");
-    // In a real app, this would update a class on body or a context
   };
 
   const exportContract = () => {
+// ...
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -40,6 +84,7 @@ export const useAppLogic = (data: SocketDocsData | null) => {
   };
 
   return {
+// ...
     activeGatewayIdx,
     setActiveGatewayIdx,
     activeEventIdx,

@@ -1,3 +1,5 @@
+import { JsonSchema } from '../interfaces/schema.interface';
+
 const METADATA_KEYS = {
   API_MODEL_PROPERTIES: 'swagger:apiModelProperties',
   API_MODEL_PROPERTIES_ARRAY: 'swagger:apiModelPropertiesArray',
@@ -5,11 +7,22 @@ const METADATA_KEYS = {
   API_MODEL_PROPERTIES_ARRAY_SLASH: 'swagger/apiModelPropertiesArray',
 };
 
+export interface SwaggerMetadata {
+  enum?: unknown[] | Record<string, unknown>;
+  isArray?: boolean;
+  items?: unknown[];
+  type?: unknown;
+  example?: unknown;
+  description?: string;
+  default?: unknown;
+  required?: boolean;
+}
+
 export class SchemaGenerator {
   /**
    * Genera un JSON Schema a partir de una clase decorada con @ApiProperty() de NestJS/Swagger
    */
-  static generate(target: any, visited: Set<any> = new Set()): any {
+  static generate(target: unknown, visited: Set<unknown> = new Set()): JsonSchema {
     if (!target) return { type: 'object' };
     if (typeof target !== 'function' && typeof target !== 'object') {
       return { type: 'object' };
@@ -22,7 +35,7 @@ export class SchemaGenerator {
     visited.add(target);
 
     const prototype = typeof target === 'function' ? target.prototype : target;
-    const constructor = typeof target === 'function' ? target : target.constructor;
+    const constructor = typeof target === 'function' ? target : (target as { constructor: unknown }).constructor;
 
     // Recolectar todos los nombres de propiedades posibles
     const propNames = new Set<string>();
@@ -31,8 +44,8 @@ export class SchemaGenerator {
     let currentProto = prototype;
     while (currentProto && currentProto !== Object.prototype) {
       // Metadatos de Swagger (array)
-      const arrayMeta = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, currentProto) || 
-                        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, currentProto) || [];
+      const arrayMeta = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, currentProto) || 
+                        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, currentProto) || []) as string[];
       arrayMeta.forEach((p: string) => propNames.add(p.replace(/^:/, '')));
 
       // Propiedades del prototipo
@@ -44,14 +57,14 @@ export class SchemaGenerator {
     }
 
     // 2. Metadatos en el constructor
-    const constArrayMeta = Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, constructor) || 
-                           Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, constructor) || [];
+    const constArrayMeta = (Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY, constructor) || 
+                           Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_ARRAY_SLASH, constructor) || []) as string[];
     constArrayMeta.forEach((p: string) => propNames.add(p.replace(/^:/, '')));
 
     // 3. Soporte al Swagger CLI Plugin (_METADATA_FACTORY)
-    if (constructor && typeof (constructor as any)._METADATA_FACTORY === 'function') {
+    if (constructor && typeof (constructor as { _METADATA_FACTORY?: unknown })._METADATA_FACTORY === 'function') {
       try {
-        const factoryMetadata = (constructor as any)._METADATA_FACTORY();
+        const factoryMetadata = (constructor as { _METADATA_FACTORY: () => Record<string, unknown> })._METADATA_FACTORY();
         if (factoryMetadata) {
           Object.keys(factoryMetadata).forEach(p => propNames.add(p));
         }
@@ -60,7 +73,7 @@ export class SchemaGenerator {
       }
     }
 
-    const schema: any = {
+    const schema: JsonSchema = {
       type: 'object',
       properties: {},
       example: {},
@@ -71,18 +84,19 @@ export class SchemaGenerator {
     // Procesar cada propiedad
     propNames.forEach((propertyName: string) => {
       // Obtener metadatos
-      let metadata =
+      const metadata = (
         Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, prototype, propertyName) ||
         Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES, constructor, propertyName) ||
         Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, prototype, propertyName) ||
-        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, constructor, propertyName);
+        Reflect.getMetadata(METADATA_KEYS.API_MODEL_PROPERTIES_SLASH, constructor, propertyName)
+      ) as SwaggerMetadata | undefined;
 
       const designType = Reflect.getMetadata('design:type', prototype, propertyName);
 
       if (!metadata && !designType) return;
 
       const meta = metadata || {};
-      const propertySchema: any = {};
+      const propertySchema: JsonSchema = { type: 'object' };
 
       // === Manejo de Enum ===
       if (meta.enum) {
@@ -109,7 +123,7 @@ export class SchemaGenerator {
         // Ejemplo para arrays
         if (meta.example !== undefined) {
           propertySchema.example = Array.isArray(meta.example) ? meta.example : [meta.example];
-        } else if (propertySchema.items.example !== undefined) {
+        } else if (propertySchema.items?.example !== undefined) {
           propertySchema.example = [propertySchema.items.example];
         }
       } 
@@ -127,13 +141,15 @@ export class SchemaGenerator {
       if (meta.description) propertySchema.description = meta.description;
       if (meta.default !== undefined) propertySchema.default = meta.default;
 
-      schema.properties[propertyName] = propertySchema;
+      if (schema.properties) {
+        schema.properties[propertyName] = propertySchema;
+      }
 
       // Generar ejemplo
       if (propertySchema.example !== undefined) {
-        schema.example[propertyName] = propertySchema.example;
+        if (schema.example) schema.example[propertyName] = propertySchema.example;
       } else if (!propertySchema.enum) {
-        schema.example[propertyName] = this.getDefaultExample(propertySchema.type);
+        if (schema.example) schema.example[propertyName] = this.getDefaultExample(propertySchema.type);
       }
 
       // Campo requerido
@@ -146,18 +162,18 @@ export class SchemaGenerator {
       schema.required = required;
     }
 
-    if (Object.keys(schema.example).length === 0) {
+    if (Object.keys(schema.example || {}).length === 0) {
       delete schema.example;
     }
 
-    if (Object.keys(schema.properties).length === 0) {
+    if (Object.keys(schema.properties || {}).length === 0) {
       return { type: 'object' };
     }
 
     return schema;
   }
 
-  private static getDefaultExample(type: string): any {
+  private static getDefaultExample(type: string): unknown {
     switch (type) {
       case 'string': return '';
       case 'number': return 0;
@@ -169,7 +185,7 @@ export class SchemaGenerator {
     }
   }
 
-  private static resolveType(type: any, visited: Set<any>): any {
+  private static resolveType(type: unknown, visited: Set<unknown>): JsonSchema {
     if (!type) return { type: 'object' };
 
     // Tipos primitivos
@@ -180,7 +196,7 @@ export class SchemaGenerator {
     if (type === BigInt) return { type: 'integer', format: 'int64' };
 
     // Clases personalizadas (recursivo)
-    if (typeof type === 'function' && ![Object, Array, Promise].includes(type)) {
+    if (typeof type === 'function' && ![Object, Array, Promise].includes(type as any)) {
       const nestedSchema = this.generate(type, visited);
       if (Object.keys(nestedSchema.properties || {}).length > 0) {
         return nestedSchema;

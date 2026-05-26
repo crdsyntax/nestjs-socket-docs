@@ -1,17 +1,38 @@
-import { Project, SyntaxKind } from 'ts-morph';
+import { Project, SyntaxKind, ClassDeclaration, ObjectLiteralExpression, MethodDeclaration } from 'ts-morph';
+import * as path from 'path';
+
+export interface ScannedEvent {
+  methodName: string;
+  eventName: string;
+  payload: string | null;
+}
+
+export interface ScannedGateway {
+  name: string;
+  namespace: string;
+  path: string;
+  events: ScannedEvent[];
+}
 
 export class ASTScannerService {
   private project: Project;
 
   constructor(tsconfigPath: string) {
+    console.log(`[ASTScanner] Initializing with config: ${tsconfigPath}`);
     this.project = new Project({
       tsConfigFilePath: tsconfigPath,
+      skipAddingFilesFromTsConfig: false,
     });
+    
+    const rootDir = path.dirname(tsconfigPath);
+    this.project.addSourceFilesAtPaths(path.join(rootDir, '**/*.ts'));
   }
 
-  scanGateways() {
+  scanGateways(): ScannedGateway[] {
     const sourceFiles = this.project.getSourceFiles();
-    const gateways = [];
+    console.log(`[ASTScanner] Scanning ${sourceFiles.length} files...`);
+    
+    const gateways: ScannedGateway[] = [];
 
     for (const sourceFile of sourceFiles) {
       const classes = sourceFile.getClasses();
@@ -22,67 +43,94 @@ export class ASTScannerService {
         );
 
         if (isGateway) {
-          const gatewayData = {
-            name: cls.getName(),
+          console.log(`[ASTScanner] Found gateway class: ${cls.getName()}`);
+          gateways.push({
+            name: cls.getName() || 'UnknownGateway',
             namespace: this.getNamespace(cls),
+            path: this.getPath(cls),
             events: this.scanEvents(cls),
-          };
-          gateways.push(gatewayData);
+          });
         }
       }
     }
     return gateways;
   }
 
-  private getNamespace(cls: any) {
+  private getNamespace(cls: ClassDeclaration): string {
     const decorator = cls.getDecorator('WebSocketGateway') || cls.getDecorator('SocketController');
     if (!decorator) return '/';
     
     const args = decorator.getArguments();
     if (args.length === 0) return '/';
 
-    const arg = args[0];
-    if (arg.getKind() === SyntaxKind.StringLiteral) {
-      return arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
-    } else if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
-      const obj = arg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
-      const isSocketController = decorator.getName() === 'SocketController';
-      const propName = isSocketController ? 'name' : 'namespace';
-      
-      const prop = obj.getProperty(propName) || obj.getProperty('namespace');
-      if (prop && prop.getKind() === SyntaxKind.PropertyAssignment) {
-        const init = prop.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
-        if (init) {
-          if (init.getKind() === SyntaxKind.StringLiteral) {
-            return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
-          }
-          // Handle Enums or variables (e.g., Namespaces.YOUTUBE_MUSIC)
-          return init.getText();
-        }
+    for (const arg of args) {
+      if (arg.getKind() === SyntaxKind.StringLiteral) {
+        return arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
       }
-    } else {
-      // Fallback for when it's a direct Enum/variable reference
-      return arg.getText();
+      
+      if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
+        const obj = arg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+        const namespace = this.getPropertyValue(obj, 'namespace') || this.getPropertyValue(obj, 'name');
+        if (namespace) return namespace;
+      }
     }
+
+    const firstArg = args[0];
+    if (firstArg.getKind() !== SyntaxKind.NumericLiteral) {
+      return firstArg.getText().replace(/['"]/g, '');
+    }
+
     return '/';
   }
 
-  private scanEvents(cls: any) {
+  private getPath(cls: ClassDeclaration): string {
+    const decorator = cls.getDecorator('WebSocketGateway');
+    if (!decorator) return '/socket.io';
+    
+    const args = decorator.getArguments();
+    for (const arg of args) {
+      if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
+        const obj = arg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+        const pathVal = this.getPropertyValue(obj, 'path');
+        if (pathVal) return pathVal;
+      }
+    }
+    return '/socket.io';
+  }
+
+  private getPropertyValue(obj: ObjectLiteralExpression, name: string): string | null {
+    const prop = obj.getProperty(name);
+    if (prop && prop.getKind() === SyntaxKind.PropertyAssignment) {
+      const init = prop.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializer();
+      if (init) {
+        if (init.getKind() === SyntaxKind.StringLiteral) {
+          return init.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+        }
+        return init.getText().replace(/['"]/g, '');
+      }
+    }
+    return null;
+  }
+
+  private scanEvents(cls: ClassDeclaration): ScannedEvent[] {
     const methods = cls.getMethods();
-    const events = [];
+    const events: ScannedEvent[] = [];
 
     for (const method of methods) {
       const decorator = method.getDecorator('SubscribeMessage') || method.getDecorator('SocketEvent');
       if (decorator) {
         const args = decorator.getArguments();
         let eventName = 'unknown';
+        
         if (args.length > 0) {
           const arg = args[0];
           if (arg.getKind() === SyntaxKind.StringLiteral) {
             eventName = arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+          } else if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
+            const obj = arg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+            eventName = this.getPropertyValue(obj, 'event') || 'unknown';
           } else {
-            // Handle Enums or variables (e.g., YoutubeMusicWsEvents.SEARCH_SUGGEST)
-            eventName = arg.getText();
+            eventName = arg.getText().replace(/['"]/g, '');
           }
         }
 
@@ -96,7 +144,7 @@ export class ASTScannerService {
     return events;
   }
 
-  private getPayloadType(method: any) {
+  private getPayloadType(method: MethodDeclaration): string | null {
     const params = method.getParameters();
     for (const param of params) {
       if (param.getDecorator('SocketPayload') || param.getDecorator('MessageBody')) {

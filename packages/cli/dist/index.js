@@ -33,11 +33,47 @@ const fs = __importStar(require("fs-extra"));
 const chalk_1 = __importDefault(require("chalk"));
 const ast_scanner_service_1 = require("./services/ast-scanner.service");
 const bootstrap_editor_service_1 = require("./services/bootstrap-editor.service");
+const nestjs_socket_docs_1 = require("@crdsyntax/nestjs-socket-docs");
 const program = new commander_1.Command();
 program
     .name('socket-docs')
     .description('CLI for nestjs-socket-docs')
     .version('0.0.1');
+program
+    .command('dev')
+    .description('Start a standalone development server with scanned gateways')
+    .option('-p, --project <path>', 'Path to tsconfig.json', 'tsconfig.json')
+    .option('-port, --port <number>', 'Port to run the server on', '3001')
+    .action(async (options) => {
+    const rootDir = process.cwd();
+    const tsconfigPath = path.resolve(rootDir, options.project);
+    if (!fs.existsSync(tsconfigPath)) {
+        console.error(chalk_1.default.red(`Error: Could not find ${options.project}`));
+        process.exit(1);
+    }
+    console.log(chalk_1.default.blue('🔍 Scanning project for gateways...'));
+    const scanner = new ast_scanner_service_1.ASTScannerService(tsconfigPath);
+    const startServer = async () => {
+        const gateways = scanner.scanGateways();
+        const schema = {
+            gateways: gateways.map(g => ({
+                name: g.name || 'Unknown',
+                namespace: g.namespace,
+                path: g.path,
+                events: g.events.map(e => ({
+                    event: e.eventName,
+                    summary: `Event: ${e.eventName}`,
+                    methodName: e.methodName,
+                    payloadSchema: e.payload ? { type: 'object', description: `Type: ${e.payload}` } : undefined
+                }))
+            }))
+        };
+        console.log(chalk_1.default.green(`✅ Scanned ${gateways.length} gateways.`));
+        return await nestjs_socket_docs_1.SocketDocsModule.dev(schema, { port: parseInt(options.port) });
+    };
+    await startServer();
+    console.log(chalk_1.default.gray('👀 Watching for changes... (Press Ctrl+C to stop)'));
+});
 program
     .command('init')
     .description('Initialize nestjs-socket-docs in a NestJS project')
@@ -69,7 +105,8 @@ program
         }
     }
     catch (err) {
-        console.error(chalk_1.default.red(`❌ Failed to inject bootstrap: ${err.message}`));
+        const error = err;
+        console.error(chalk_1.default.red(`❌ Failed to inject bootstrap: ${error.message}`));
     }
     console.log(chalk_1.default.blue('📄 Generating socket-docs.config.ts...'));
     const configPath = path.resolve(rootDir, 'socket-docs.config.ts');

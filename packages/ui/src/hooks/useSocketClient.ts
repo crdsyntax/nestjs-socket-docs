@@ -26,14 +26,6 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
   }, []);
 
   const connect = useCallback((gatewayName: string, namespace: string, path?: string) => {
-    // If already connected, disconnect
-    if (connected[gatewayName]) {
-      socketService.disconnect(gatewayName);
-      setConnected((curr) => ({ ...curr, [gatewayName]: false }));
-      addLog("error", `Disconnected from ${namespace}`);
-      return;
-    }
-
     const mergedOptions: SocketConfig = {
       ...options,
       options: {
@@ -65,9 +57,16 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
         addLog("received", `Event: ${event}`, args);
       },
     });
-  }, [options, connected, addLog]);
+  }, [options, addLog]);
+
+  const disconnect = useCallback((gatewayName: string, namespace?: string) => {
+    socketService.disconnect(gatewayName);
+    setConnected((curr) => ({ ...curr, [gatewayName]: false }));
+    addLog("error", `Disconnected from ${namespace || gatewayName}`);
+  }, [addLog]);
 
   const emitEvent = useCallback((gatewayName: string, event: string, payload: string) => {
+// ...
     try {
       const parsedPayload = JSON.parse(payload);
       addLog("sent", `Emitting ${event}`, parsedPayload);
@@ -89,6 +88,7 @@ const useSocketClient = (options: UseSocketClientOptions = {}) => {
     connected,
     logs,
     connect,
+    disconnect,
     emitEvent,
     clearLogs,
   };

@@ -12,7 +12,6 @@ interface RequestBodyPanelProps {
 }
 
 const RequestBodyPanel = ({ payload, schema, responseSchema, emits, onChange, onSend }: RequestBodyPanelProps) => {
-  const [activeTab, setActiveTab] = useState<"example" | "schema">("example");
   const [expectedEvent, setExpectedEvent] = useState(emits || "");
 
   // Update expectedEvent when event changes
@@ -45,58 +44,20 @@ const RequestBodyPanel = ({ payload, schema, responseSchema, emits, onChange, on
       <div className="p-4">
         <div className="mb-3 flex gap-4 border-b border-border-subtle pb-2 text-[13px]">
           <span 
-            onClick={() => setActiveTab("example")}
-            className={`cursor-pointer pb-1.5 transition-colors ${activeTab === "example" ? "border-b-2 border-brand-emerald text-brand-emerald" : "text-text-secondary hover:text-text-primary"}`}
+            className="pb-1.5 border-b-2 border-brand-emerald text-brand-emerald font-medium"
           >
             {translations.event.exampleValue}
           </span>
-          <span 
-            onClick={() => setActiveTab("schema")}
-            className={`cursor-pointer pb-1.5 transition-colors ${activeTab === "schema" ? "border-b-2 border-brand-emerald text-brand-emerald" : "text-text-secondary hover:text-text-primary"}`}
-          >
-            Request Schema
-          </span>
-          {responseSchema && (
-            <span 
-              onClick={() => setActiveTab("schema")} // We'll keep it simple for now, maybe show both or a toggle
-              className="text-text-muted cursor-default ml-auto text-[11px] uppercase font-bold"
-            >
-              Response schema available
-            </span>
-          )}
         </div>
         
-        {activeTab === "example" ? (
-          <div className="space-y-4">
-            <textarea
-              value={payload}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-full rounded border border-border-subtle bg-bg-primary p-4 font-mono text-[13px] leading-relaxed text-text-primary outline-none focus:border-brand-emerald"
-              rows={8}
-            />
-            {responseSchema && (
-               <div className="rounded border border-border-subtle bg-bg-primary/50 p-3">
-                  <div className="text-[11px] font-bold text-text-muted uppercase mb-2">Expected Response Schema</div>
-                  <pre className="text-[11px] text-text-secondary overflow-x-auto max-h-40">{JSON.stringify(responseSchema, null, 2)}</pre>
-               </div>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div className="text-[11px] font-bold text-text-muted uppercase mb-2">Request</div>
-              <div className="rounded border border-border-subtle bg-bg-primary p-4 font-mono text-[12px] leading-relaxed text-text-secondary overflow-x-auto max-h-[300px]">
-                <pre>{JSON.stringify(schema, null, 2)}</pre>
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-text-muted uppercase mb-2">Response</div>
-              <div className="rounded border border-border-subtle bg-bg-primary p-4 font-mono text-[12px] leading-relaxed text-text-secondary overflow-x-auto max-h-[300px]">
-                <pre>{responseSchema ? JSON.stringify(responseSchema, null, 2) : "No response schema defined."}</pre>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="space-y-4">
+          <textarea
+            value={payload}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded border border-border-subtle bg-bg-primary p-4 font-mono text-[13px] leading-relaxed text-text-primary outline-none focus:border-brand-emerald"
+            rows={8}
+          />
+        </div>
 
         <div className="mt-4 flex items-center gap-3">
           <button

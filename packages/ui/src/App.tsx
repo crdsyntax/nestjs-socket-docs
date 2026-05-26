@@ -22,21 +22,31 @@ const App = () => {
   }, []);
 
   const [apiConfig, setApiConfig] = React.useState<ApiConfig>(() => {
+    const external = (window as any).SOCKET_DOCS_CONFIG?.api || {};
     const saved = localStorage.getItem(STORAGE_KEYS.API);
-    const external = (window as any).SOCKET_DOCS_CONFIG?.api;
+    const parsedSaved = saved ? JSON.parse(saved) : {};
     
-    if (saved) return JSON.parse(saved);
-    if (external) return { ...external };
-    
-    return {
+    const config: ApiConfig = {
       baseUrl: window.location.origin,
       jsonPath: "/socket-docs/json",
+      ...external,
     };
+
+    if (parsedSaved.baseUrl) {
+      config.baseUrl = parsedSaved.baseUrl;
+    }
+    
+    if (parsedSaved.jsonPath && !external.jsonPath) {
+      config.jsonPath = parsedSaved.jsonPath;
+    }
+    
+    return config;
   });
   
   const [socketConfig, setSocketConfig] = React.useState<SocketConfig>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SOCKET);
     const external = (window as any).SOCKET_DOCS_CONFIG?.socket;
+    const saved = localStorage.getItem(STORAGE_KEYS.SOCKET);
+    const parsedSaved = saved ? JSON.parse(saved) : null;
 
     const defaultConfig: SocketConfig = {
       namespace: "/",
@@ -55,15 +65,28 @@ const App = () => {
       }
     };
 
-    if (saved) return JSON.parse(saved);
-    if (external) return { ...defaultConfig, ...external };
+    if (external) {
+      return { ...defaultConfig, ...parsedSaved, ...external };
+    }
+    
+    if (parsedSaved) return parsedSaved;
     
     return defaultConfig;
   });
 
   const [showSettings, setShowSettings] = React.useState(false);
 
-  const { data, payloads, setPayloads, expanded, toggleExpand, loading, error } = useSocketDocs(apiConfig);
+  const schemaConfig = React.useMemo(() => {
+    if (isStandalone) {
+      return {
+        ...apiConfig,
+        baseUrl: window.location.origin, 
+      };
+    }
+    return apiConfig;
+  }, [apiConfig, isStandalone]);
+
+  const { data, payloads, setPayloads, expanded, toggleExpand, loading, error } = useSocketDocs(schemaConfig);
 
   React.useEffect(() => {
     console.log("[SocketDocs] UI State:", { data, loading, error });
@@ -84,7 +107,7 @@ const App = () => {
     auth: socketConfig.auth,
   }), [socketConfig]);
 
-  const { connected, logs, connect, emitEvent, clearLogs } = useSocketClient(socketClientOptions);
+  const { connected, logs, connect, disconnect, emitEvent, clearLogs } = useSocketClient(socketClientOptions);
   
   const availableNamespaces = React.useMemo(() => {
     if (!data) return ["/"];
@@ -110,25 +133,29 @@ const App = () => {
     filteredGateways,
   } = useAppLogic(data);
 
-  // Auto-connect logic
   React.useEffect(() => {
-    if (socketConfig.autoConnect && activeGateway && !connected[activeGateway.name]) {
+    if (activeGateway) {
       const baseUrl = apiConfig.baseUrl.replace(/\/$/, "");
       const ns = socketConfig.namespace === "/" 
         ? activeGateway.namespace 
         : socketConfig.namespace;
-      
-      const timeout = setTimeout(() => {
-        connect(
-          activeGateway.name, 
-          `${baseUrl}${normalizedNs(ns)}`, 
-          activeGateway.path
-        );
-      }, 500); // Small delay to avoid rapid connections when switching events
-      
-      return () => clearTimeout(timeout);
+      const fullUrl = `${baseUrl}${normalizedNs(ns)}`;
+
+      if (socketConfig.autoConnect) {
+        const timeout = setTimeout(() => {
+          connect(activeGateway.name, fullUrl, activeGateway.path);
+        }, 300);
+        return () => clearTimeout(timeout);
+      }
     }
-  }, [activeGateway?.name, socketConfig.autoConnect, apiConfig.baseUrl, socketConfig.namespace, connect, connected]);
+  }, [
+    activeGateway?.name, 
+    socketConfig.autoConnect, 
+    socketConfig.namespace,
+    socketConfig.auth.token,
+    apiConfig.baseUrl, 
+    connect
+  ]);
 
   const handleSaveSettings = (newApi: ApiConfig, newSocket: SocketConfig) => {
     localStorage.setItem(STORAGE_KEYS.API, JSON.stringify(newApi));
@@ -136,6 +163,23 @@ const App = () => {
     setApiConfig(newApi);
     setSocketConfig(newSocket);
     setShowSettings(false);
+    window.location.reload();
+  };
+
+  const handleConnectToggle = () => {
+    if (!activeGateway) return;
+    
+    const baseUrl = apiConfig.baseUrl.replace(/\/$/, "");
+    const ns = socketConfig.namespace === "/" 
+      ? activeGateway.namespace 
+      : socketConfig.namespace;
+    const fullUrl = `${baseUrl}${normalizedNs(ns)}`;
+
+    if (connected[activeGateway.name]) {
+      disconnect(activeGateway.name, ns);
+    } else {
+      connect(activeGateway.name, fullUrl, activeGateway.path);
+    }
   };
 
   const normalizedNs = (ns: string) => ns.startsWith("/") ? ns : `/${ns}`;
@@ -196,64 +240,60 @@ const App = () => {
         onToggleExpand={toggleExpand}
       />
 
-      <main className="flex flex-1 flex-col overflow-y-auto bg-bg-secondary">
+      <main className="flex flex-1 flex-col overflow-hidden bg-bg-secondary">
         <MainHeader
           connected={activeGateway ? !!connected[activeGateway.name] : false}
-          gatewayPath={activeGateway?.path ?? "ws://localhost:3000"}
+          gatewayPath={activeGateway ? `${apiConfig.baseUrl.replace(/https?:\/\//, '')}${activeGateway.path}` : "ws://localhost:3000"}
           namespace={socketConfig.namespace === "/" && activeGateway ? activeGateway.namespace : socketConfig.namespace}
           namespaces={availableNamespaces}
           theme={theme}
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
           onNamespaceChange={(ns) => setSocketConfig(prev => ({ ...prev, namespace: ns }))}
+          onConnect={handleConnectToggle}
         />
 
-        <div className="mx-auto w-full max-w-[1200px] p-6">
+        <div className="flex flex-1 overflow-hidden p-4 md:p-6 gap-4 md:gap-6 flex-col lg:flex-row">
           {activeGateway && activeEvent ? (
             <>
-              <EventDetails
-                gatewayName={activeGateway.name}
-                eventName={activeEvent.event}
-                summary={activeEvent.summary ?? ""}
-                description={activeEvent.description ?? ""}
-              />
+              {/* Left Column: Event Details and Execution */}
+              <div className="flex flex-[1.5] flex-col overflow-y-auto min-w-0 gap-6 custom-scrollbar pr-0 lg:pr-2 h-full">
+                <EventDetails
+                  gatewayName={activeGateway.name}
+                  eventName={activeEvent.event}
+                  summary={activeEvent.summary ?? ""}
+                  description={activeEvent.description ?? ""}
+                  auth={activeEvent.auth}
+                />
 
-              <ParametersPanel
-                connected={!!connected[activeGateway.name]}
-                schema={activeEvent.payloadSchema}
-                onConnect={() => {
-                  const baseUrl = apiConfig.baseUrl.replace(/\/$/, "");
-                  const ns = socketConfig.namespace === "/" 
-                    ? activeGateway.namespace 
-                    : socketConfig.namespace;
-                  
-                  connect(
-                    activeGateway.name, 
-                    `${baseUrl}${normalizedNs(ns)}`, 
-                    activeGateway.path
-                  );
-                }}
-              />
+                <ParametersPanel
+                  schema={activeEvent.payloadSchema}
+                  responseSchema={activeEvent.responseSchema}
+                />
 
-              <RequestBodyPanel
-                payload={payloads[eventKey] ?? "{}"}
-                schema={activeEvent.payloadSchema}
-                responseSchema={activeEvent.responseSchema}
-                emits={activeEvent.emits}
-                onChange={(val) => setPayloads({ ...payloads, [eventKey]: val })}
-                onSend={() => emitEvent(activeGateway.name, activeEvent.event, payloads[eventKey] ?? "{}")}
-              />
+                <RequestBodyPanel
+                  payload={payloads[eventKey] ?? "{}"}
+                  schema={activeEvent.payloadSchema}
+                  responseSchema={activeEvent.responseSchema}
+                  emits={activeEvent.emits}
+                  onChange={(val) => setPayloads({ ...payloads, [eventKey]: val })}
+                  onSend={() => emitEvent(activeGateway.name, activeEvent.event, payloads[eventKey] ?? "{}")}
+                />
+              </div>
 
-              <RealtimePanel
-                connected={!!connected[activeGateway.name]}
-                logs={logs}
-                onClear={clearLogs}
-                isPaused={isPaused}
-                onTogglePause={() => setIsPaused(!isPaused)}
-              />
+              {/* Right Column: Real-time Logs */}
+              <div className="flex flex-1 flex-col overflow-hidden border-t lg:border-t-0 lg:border-l border-border-subtle pt-6 lg:pt-0 lg:pl-6 min-h-[300px] lg:min-h-0">
+                <RealtimePanel
+                  connected={!!connected[activeGateway.name]}
+                  logs={logs}
+                  onClear={clearLogs}
+                  isPaused={isPaused}
+                  onTogglePause={() => setIsPaused(!isPaused)}
+                />
+              </div>
             </>
           ) : (
-            <div className="flex h-full items-center justify-center text-text-secondary italic">
+            <div className="flex h-full w-full items-center justify-center text-text-secondary italic">
               Selecciona un evento para comenzar
             </div>
           )}

@@ -15,6 +15,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@crdsyntax/nestjs-socket-docs": "workspace:*",
     "commander": "^11.0.0",
     "ts-morph": "^20.0.0",
     "chalk": "^4.1.2",

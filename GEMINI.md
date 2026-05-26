@@ -1,0 +1,7 @@
+- Respuestas: Máximo 2 palabras.
+- Tarea finalizada: "Listo".
+- Errores: Máximo 4 palabras, archivo y línea.
+- Sin descripciones ni explicaciones.
+- Ediciones quirúrgicas únicamente.
+- Prohibido el uso de 'any'. Tipado estricto siempre.
+- No compilar el proyecto a menos que se pida: "compila el proyecto y verifica".
