@@ -1,3 +1,4 @@
+import React from "react";
 interface MainHeaderProps {
     connected: boolean;
     gatewayPath: string;
@@ -9,5 +10,5 @@ interface MainHeaderProps {
     onNamespaceChange: (ns: string) => void;
     onConnect: () => void;
 }
-declare const MainHeader: ({ connected, gatewayPath, namespace, namespaces, theme, onToggleTheme, onOpenSettings, onNamespaceChange, onConnect, }: MainHeaderProps) => import("react/jsx-runtime").JSX.Element;
+declare const MainHeader: ({ connected, gatewayPath, namespace, namespaces, theme, onToggleTheme, onOpenSettings, onNamespaceChange, onConnect, }: MainHeaderProps) => React.JSX.Element;
 export default MainHeader;

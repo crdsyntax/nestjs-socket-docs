@@ -27,15 +27,20 @@ const GatewayPanel = ({
         return (
           <div key={gIdx} className="nav-group">
             <div 
-              className="flex cursor-pointer items-center justify-between py-2 text-[13px] font-semibold text-text-primary"
+              className="flex cursor-pointer items-center justify-between py-2 text-[13px] font-semibold text-text-primary group"
               onClick={() => onToggleExpand(gateway.name)}
             >
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">📁</span>
-                {gateway.name}
+                <div className="flex flex-col">
+                  <span>{gateway.name}</span>
+                  <span className="text-[10px] text-brand-emerald font-mono">
+                    {gateway.namespace}
+                  </span>
+                </div>
               </div>
               <span className={`text-[11px] text-text-muted transition-transform ${isExpanded ? "" : "-rotate-90"}`}>
-                {gateway.namespace} ▾
+                ▾
               </span>
             </div>
             
@@ -57,10 +62,17 @@ const GatewayPanel = ({
                           : "text-text-secondary hover:bg-bg-secondary"
                       }`}
                     >
-                      <span className="inline-block w-[42px] rounded bg-bg-surface py-0.5 text-center font-mono text-[10px] font-bold text-brand-emerald">
-                        EVENT
-                      </span>
-                      <span className="truncate">{event.event}</span>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block rounded bg-bg-surface px-1.5 py-0.5 font-mono text-[9px] font-bold text-brand-emerald">
+                            EVENT
+                          </span>
+                          <span className="truncate font-medium">{event.event}</span>
+                        </div>
+                        <span className="text-[10px] text-text-muted ml-[42px] truncate">
+                          Namespace: {gateway.namespace}
+                        </span>
+                      </div>
                     </li>
                   );
                 })}

@@ -7,10 +7,13 @@ interface MainHeaderProps {
   gatewayPath: string;
   namespace: string;
   namespaces: string[];
+  path: string;
+  paths: string[];
   theme: "dark" | "light";
   onToggleTheme: () => void;
   onOpenSettings?: () => void;
   onNamespaceChange: (ns: string) => void;
+  onPathChange: (path: string) => void;
   onConnect: () => void;
 }
 
@@ -19,10 +22,13 @@ const MainHeader = ({
   gatewayPath,
   namespace,
   namespaces,
+  path,
+  paths,
   theme,
   onToggleTheme,
   onOpenSettings,
   onNamespaceChange,
+  onPathChange,
   onConnect,
 }: MainHeaderProps) => {
   return (
@@ -45,15 +51,31 @@ const MainHeader = ({
         {connected ? "Desconectar" : "Conectar"}
       </button>
 
-      <select 
-        value={namespace}
-        onChange={(e) => onNamespaceChange(e.target.value)}
-        className="rounded-md border border-border-subtle bg-bg-surface px-3 py-1.5 text-xs text-text-primary outline-none focus:border-brand-emerald transition-colors"
-      >
-        {namespaces.map(ns => (
-          <option key={ns} value={ns}>{ns}</option>
-        ))}
-      </select>
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold uppercase text-text-muted px-1">Namespace</span>
+          <input 
+            type="text"
+            value={namespace}
+            onChange={(e) => onNamespaceChange(e.target.value)}
+            placeholder="/namespace"
+            className="w-32 rounded-md border border-border-subtle bg-bg-surface px-3 py-1 text-xs text-text-primary outline-none focus:border-brand-emerald transition-colors"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold uppercase text-text-muted px-1">Path</span>
+          <select 
+            value={path}
+            onChange={(e) => onPathChange(e.target.value)}
+            className="rounded-md border border-border-subtle bg-bg-surface px-3 py-1 text-xs text-text-primary outline-none focus:border-brand-emerald transition-colors"
+          >
+            {paths.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div className="flex items-center gap-2 border-l border-border-subtle pl-3">
         <button 

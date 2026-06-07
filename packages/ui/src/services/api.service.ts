@@ -11,14 +11,12 @@ class ApiService {
   private jsonPath: string;
 
   constructor(config: ApiConfig = {}) {
-    const baseUrl = config.baseUrl || window.location.origin;
-    const jsonPath = config.jsonPath || "/socket-docs/json";
+    this.jsonPath = config.jsonPath || "/socket-docs/json";
     
     this.instance = axios.create({
-      baseURL: baseUrl,
-      timeout: 10000, // 10 second timeout
+      baseURL: config.baseUrl || window.location.origin,
+      timeout: 10000,
     });
-    this.jsonPath = jsonPath;
   }
 
   async fetchDocs(): Promise<SocketDocsData> {

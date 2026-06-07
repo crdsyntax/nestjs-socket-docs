@@ -11,12 +11,12 @@ const STORAGE_KEYS = {
 export const useAppLogic = (data: SocketDocsData | null) => {
   const [activeGatewayIdx, setActiveGatewayIdx] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.GATEWAY_IDX);
-    return saved ? parseInt(saved) : 0;
+    return saved ? parseInt(saved) : -1;
   });
 
   const [activeEventIdx, setActiveEventIdx] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.EVENT_IDX);
-    return saved ? parseInt(saved) : 0;
+    return saved ? parseInt(saved) : -1;
   });
 
   const [searchQuery, setSearchQuery] = useState(() => {

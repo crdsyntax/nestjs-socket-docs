@@ -1,3 +1,4 @@
+import React from "react";
 import { SocketDocsPayloadSchema } from "../types";
 interface RequestBodyPanelProps {
     payload: string;
@@ -7,5 +8,5 @@ interface RequestBodyPanelProps {
     onChange: (val: string) => void;
     onSend: () => void;
 }
-declare const RequestBodyPanel: ({ payload, schema, responseSchema, emits, onChange, onSend }: RequestBodyPanelProps) => import("react/jsx-runtime").JSX.Element;
+declare const RequestBodyPanel: ({ payload, schema, responseSchema, emits, onChange, onSend }: RequestBodyPanelProps) => React.JSX.Element;
 export default RequestBodyPanel;

@@ -25,33 +25,43 @@ interface SocketDocsWindow extends Window {
 
 const App = () => {
   const isStandalone = React.useMemo(() => {
-    return !window.location.pathname.includes('socket-docs');
+    const configWindow = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG || {};
+    return !!configWindow.api?.jsonPath || !window.location.pathname.includes('socket-docs');
   }, []);
 
   const [apiConfig, setApiConfig] = React.useState<ApiConfig>(() => {
-    const external = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG?.api || {};
+    const configWindow = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG || {};
+    const external = configWindow.api || {};
     const saved = localStorage.getItem(STORAGE_KEYS.API);
     const parsedSaved = saved ? JSON.parse(saved) : {};
     
+    // 1. Defaults
     const config: ApiConfig = {
       baseUrl: window.location.origin,
       jsonPath: "/socket-docs/json",
-      ...external,
     };
 
-    if (parsedSaved.baseUrl) {
-      config.baseUrl = parsedSaved.baseUrl;
-    }
+    // 2. Apply external (server injected)
+    if (external.baseUrl) config.baseUrl = external.baseUrl;
+    if (external.jsonPath) config.jsonPath = external.jsonPath;
+
+    // 3. Apply saved (user preference)
+    if (parsedSaved.baseUrl) config.baseUrl = parsedSaved.baseUrl;
     
-    if (parsedSaved.jsonPath && !external.jsonPath) {
+    // In standalone mode, we strictly respect the server's jsonPath 
+    // unless the user is pointing to a different baseUrl
+    const isSameHost = parsedSaved.baseUrl ? parsedSaved.baseUrl.includes(window.location.host) : true;
+    
+    if (parsedSaved.jsonPath && (!isStandalone || !isSameHost)) {
       config.jsonPath = parsedSaved.jsonPath;
     }
-    
+
     return config;
   });
-  
+
   const [socketConfig, setSocketConfig] = React.useState<SocketConfig>(() => {
-    const external = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG?.socket;
+    const configWindow = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG || {};
+    const external = configWindow.socket;
     const saved = localStorage.getItem(STORAGE_KEYS.SOCKET);
     const parsedSaved = saved ? JSON.parse(saved) : null;
 
@@ -76,31 +86,28 @@ const App = () => {
       }
     };
 
+    const config = { ...defaultConfig };
+
+    // Apply external
     if (external) {
-      return { ...defaultConfig, ...parsedSaved, ...external };
+      Object.assign(config, external);
+    }
+
+    // Apply saved
+    if (parsedSaved) {
+      Object.assign(config, parsedSaved);
     }
     
-    if (parsedSaved) return parsedSaved;
-    
-    return defaultConfig;
+    return config;
   });
 
   const [showSettings, setShowSettings] = React.useState(false);
 
   const schemaConfig = React.useMemo(() => {
-    if (isStandalone) {
-      return {
-        ...apiConfig,
-        baseUrl: window.location.origin, 
-      };
-    }
     return apiConfig;
-  }, [apiConfig, isStandalone]);
+  }, [apiConfig]);
 
   const { data, payloads, setPayloads, expanded, toggleExpand, loading, error } = useSocketDocs(schemaConfig);
-
-  React.useEffect(() => {
-  }, [data, loading, error]);
 
   const socketClientOptions = React.useMemo(() => ({
     options: {
@@ -121,9 +128,16 @@ const App = () => {
   
   const availableNamespaces = React.useMemo(() => {
     if (!data) return ["/"];
-    const nsSet = new Set<string>();
+    const nsSet = new Set<string>(["/"]);
     data.gateways.forEach(g => nsSet.add(g.namespace));
     return Array.from(nsSet);
+  }, [data]);
+
+  const availablePaths = React.useMemo(() => {
+    if (!data) return ["/socket.io"];
+    const pathSet = new Set<string>(["/socket.io"]);
+    data.gateways.forEach(g => pathSet.add(g.path));
+    return Array.from(pathSet);
   }, [data]);
 
   const {
@@ -149,11 +163,14 @@ const App = () => {
       const ns = socketConfig.namespace === "/" 
         ? activeGateway.namespace 
         : socketConfig.namespace;
+      const path = socketConfig.path === "/socket.io"
+        ? activeGateway.path
+        : socketConfig.path;
       const fullUrl = `${baseUrl}${normalizedNs(ns)}`;
 
       if (socketConfig.autoConnect) {
         const timeout = setTimeout(() => {
-          connect(activeGateway.name, fullUrl, activeGateway.path);
+          connect(activeGateway.name, fullUrl, path);
         }, 300);
         return () => clearTimeout(timeout);
       }
@@ -162,6 +179,7 @@ const App = () => {
     activeGateway?.name, 
     socketConfig.autoConnect, 
     socketConfig.namespace,
+    socketConfig.path,
     socketConfig.auth.token,
     apiConfig.baseUrl, 
     connect
@@ -176,6 +194,16 @@ const App = () => {
     window.location.reload();
   };
 
+  const handleClearSettings = () => {
+    Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem("socket_docs_payloads");
+    localStorage.removeItem("socket_docs_theme");
+    localStorage.removeItem("socket_docs_gateway_idx");
+    localStorage.removeItem("socket_docs_event_idx");
+    localStorage.removeItem("socket_docs_search");
+    window.location.reload();
+  };
+
   const handleConnectToggle = () => {
     if (!activeGateway) return;
     
@@ -183,12 +211,15 @@ const App = () => {
     const ns = socketConfig.namespace === "/" 
       ? activeGateway.namespace 
       : socketConfig.namespace;
+    const path = socketConfig.path === "/socket.io"
+      ? activeGateway.path
+      : socketConfig.path;
     const fullUrl = `${baseUrl}${normalizedNs(ns)}`;
 
     if (connected[activeGateway.name]) {
       disconnect(activeGateway.name, ns);
     } else {
-      connect(activeGateway.name, fullUrl, activeGateway.path);
+      connect(activeGateway.name, fullUrl, path);
     }
   };
 
@@ -199,10 +230,12 @@ const App = () => {
   }
 
   if (error) {
+    const failedUrl = (error as any).config?.url || apiConfig.jsonPath;
     return (
       <div className={`flex h-screen flex-col items-center justify-center gap-4 ${theme === 'dark' ? 'bg-bg-primary text-text-primary' : 'bg-white text-gray-900'}`}>
         <h1 className="text-2xl font-bold text-red-500">Error loading Socket Docs</h1>
         <p className="text-text-muted">{error.message}</p>
+        <p className="text-xs text-text-muted opacity-50">URL: {failedUrl}</p>
         <div className="flex gap-3">
           <button 
             onClick={() => setShowSettings(true)}
@@ -221,10 +254,12 @@ const App = () => {
           show={showSettings}
           onClose={() => setShowSettings(false)}
           onSave={handleSaveSettings}
+          onClear={handleClearSettings}
           initialApiConfig={apiConfig}
           initialSocketConfig={socketConfig}
           isStandalone={isStandalone}
           theme={theme}
+          activeGatewayNamespace={activeGateway?.namespace}
         />
       </div>
     );
@@ -254,20 +289,23 @@ const App = () => {
         <MainHeader
           connected={activeGateway ? !!connected[activeGateway.name] : false}
           gatewayPath={activeGateway ? `${apiConfig.baseUrl.replace(/https?:\/\//, '')}${activeGateway.path}` : "ws://localhost:3000"}
-          namespace={socketConfig.namespace === "/" && activeGateway ? activeGateway.namespace : socketConfig.namespace}
+          namespace={socketConfig.namespace !== "/" ? socketConfig.namespace : (activeGateway?.namespace || "/")}
           namespaces={availableNamespaces}
+          path={socketConfig.path !== "/socket.io" ? socketConfig.path : (activeGateway?.path || "/socket.io")}
+          paths={availablePaths}
           theme={theme}
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
           onNamespaceChange={(ns) => setSocketConfig(prev => ({ ...prev, namespace: ns }))}
+          onPathChange={(p) => setSocketConfig(prev => ({ ...prev, path: p }))}
           onConnect={handleConnectToggle}
         />
 
-        <div className="flex flex-1 p-4 md:p-6 gap-6 flex-col lg:flex-row">
+        <div className="flex flex-1 p-4 md:p-6 gap-6 flex-col lg:flex-row overflow-hidden">
           {activeGateway && activeEvent ? (
             <>
               {/* Left Column: Event Details and Execution */}
-              <div className="flex flex-[1.5] flex-col min-w-0 gap-6">
+              <div className="flex flex-[1.5] flex-col min-w-0 gap-6 overflow-y-auto pr-2">
                 <div className="flex-shrink-0">
                   <EventDetails
                     gatewayName={activeGateway.name}
@@ -298,7 +336,7 @@ const App = () => {
               </div>
 
               {/* Right Column: Real-time Logs */}
-              <div className="flex flex-1 flex-col border-t lg:border-t-0 lg:border-l border-border-subtle pt-6 lg:pt-0 lg:pl-6">
+              <div className="flex flex-1 flex-col border-t lg:border-t-0 lg:border-l border-border-subtle pt-6 lg:pt-0 lg:pl-6 overflow-hidden">
                 <RealtimePanel
                   connected={!!connected[activeGateway.name]}
                   logs={logs}
@@ -309,8 +347,29 @@ const App = () => {
               </div>
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-text-secondary italic">
-              Selecciona un evento para comenzar
+            <div className="flex h-full w-full flex-col items-center justify-center text-center p-12">
+              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-emerald/10 text-brand-emerald shadow-xl shadow-brand-emerald/5">
+                 <span className="text-4xl font-bold">■</span>
+              </div>
+              <h2 className="mb-3 text-2xl font-bold text-text-primary">Bienvenido a Socket Docs</h2>
+              <p className="max-w-md text-text-secondary">
+                Selecciona un Gateway y un evento de la barra lateral para comenzar a interactuar con tu servidor WebSocket en tiempo real.
+              </p>
+              {data && (
+                <div className="mt-8 flex gap-4">
+                  <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs font-semibold uppercase text-text-muted">Gateways</span>
+                      <span className="text-xl font-bold">{data.gateways.length}</span>
+                  </div>
+                  <div className="h-10 w-px bg-border-subtle mx-4" />
+                  <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs font-semibold uppercase text-text-muted">Total Eventos</span>
+                      <span className="text-xl font-bold">
+                        {data.gateways.reduce((acc, g) => acc + g.events.length, 0)}
+                      </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -319,6 +378,7 @@ const App = () => {
           show={showSettings}
           onClose={() => setShowSettings(false)}
           onSave={handleSaveSettings}
+          onClear={handleClearSettings}
           initialApiConfig={apiConfig}
           initialSocketConfig={socketConfig}
           isStandalone={isStandalone}

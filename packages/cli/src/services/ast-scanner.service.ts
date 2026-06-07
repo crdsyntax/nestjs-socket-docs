@@ -63,24 +63,29 @@ export class ASTScannerService {
     const args = decorator.getArguments();
     if (args.length === 0) return '/';
 
+    let namespace = '/';
+
     for (const arg of args) {
       if (arg.getKind() === SyntaxKind.StringLiteral) {
-        return arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
-      }
-      
-      if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
+        namespace = arg.asKindOrThrow(SyntaxKind.StringLiteral).getLiteralValue();
+      } else if (arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
         const obj = arg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
-        const namespace = this.getPropertyValue(obj, 'namespace') || this.getPropertyValue(obj, 'name');
-        if (namespace) return namespace;
+        const nsVal = this.getPropertyValue(obj, 'namespace') || this.getPropertyValue(obj, 'name');
+        if (nsVal) namespace = nsVal;
       }
     }
 
-    const firstArg = args[0];
-    if (firstArg.getKind() !== SyntaxKind.NumericLiteral) {
-      return firstArg.getText().replace(/['"]/g, '');
+    // If the only argument is a number (port), it's not a namespace
+    if (args.length === 1 && args[0].getKind() === SyntaxKind.NumericLiteral) {
+      return '/';
     }
 
-    return '/';
+    // Ensure it starts with /
+    if (namespace && !namespace.startsWith('/')) {
+      namespace = `/${namespace}`;
+    }
+
+    return namespace || '/';
   }
 
   private getPath(cls: ClassDeclaration): string {

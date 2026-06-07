@@ -1,3 +1,4 @@
+import React from "react";
 import { SocketDocsGateway } from "../types";
 interface SidebarProps {
     gateways: SocketDocsGateway[];
@@ -11,5 +12,5 @@ interface SidebarProps {
     expanded: Record<string, boolean>;
     onToggleExpand: (key: string) => void;
 }
-declare const Sidebar: ({ gateways, activeGatewayIdx, activeEventIdx, onSelectGateway, onSelectEvent, searchQuery, onSearchChange, onExport, expanded, onToggleExpand, }: SidebarProps) => import("react/jsx-runtime").JSX.Element;
+declare const Sidebar: ({ gateways, activeGatewayIdx, activeEventIdx, onSelectGateway, onSelectEvent, searchQuery, onSearchChange, onExport, expanded, onToggleExpand, }: SidebarProps) => React.JSX.Element;
 export default Sidebar;

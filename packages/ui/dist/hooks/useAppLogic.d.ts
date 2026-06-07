@@ -1,4 +1,3 @@
-/// <reference types="react" />
 import { SocketDocsData } from "../types";
 export declare const useAppLogic: (data: SocketDocsData | null) => {
     activeGatewayIdx: number;

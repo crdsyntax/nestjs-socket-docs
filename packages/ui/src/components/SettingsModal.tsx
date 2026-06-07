@@ -30,6 +30,7 @@ interface SettingsModalProps {
   show: boolean;
   onClose: () => void;
   onSave: (api: ApiConfig, socket: SocketConfig) => void;
+  onClear: () => void;
   initialApiConfig: ApiConfig;
   initialSocketConfig: SocketConfig;
   isStandalone: boolean;
@@ -41,6 +42,7 @@ const SettingsModal = ({
   show,
   onClose,
   onSave,
+  onClear,
   initialApiConfig,
   initialSocketConfig,
   isStandalone,
@@ -50,13 +52,15 @@ const SettingsModal = ({
   const [tempApiConfig, setTempApiConfig] = React.useState(initialApiConfig);
   const [tempSocketConfig, setTempSocketConfig] = React.useState(initialSocketConfig);
   const [isTesting, setIsTesting] = React.useState(false);
-  const [testResult, setTestResult] = React.useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = React.useState<{ success: boolean; message: string; data?: any } | null>(null);
+  const [showResultModal, setShowResultModal] = React.useState(false);
 
   React.useEffect(() => {
     if (show) {
       setTempApiConfig(initialApiConfig);
       setTempSocketConfig(initialSocketConfig);
       setTestResult(null);
+      setShowResultModal(false);
     }
   }, [show, initialApiConfig, initialSocketConfig]);
 
@@ -67,10 +71,17 @@ const SettingsModal = ({
     setTestResult(null);
 
     const baseUrl = tempApiConfig.baseUrl.replace(/\/$/, "");
-    const ns = tempSocketConfig.namespace === "/" ? (activeGatewayNamespace ?? "/") : tempSocketConfig.namespace;
+    const jsonPath = tempApiConfig.jsonPath.startsWith("/") ? tempApiConfig.jsonPath : `/${tempApiConfig.jsonPath}`;
     
     try {
+      // 1. Test API (Fetch Docs)
+      const response = await fetch(`${baseUrl}${jsonPath}`);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      const schemaData = await response.json();
+
+      // 2. Test Socket
       const { io } = await import("socket.io-client");
+      const ns = tempSocketConfig.namespace === "/" ? (activeGatewayNamespace ?? "/") : tempSocketConfig.namespace;
       const socket = io(`${baseUrl}${normalizedNs(ns)}`, {
         path: tempSocketConfig.path,
         transports: tempSocketConfig.transports,
@@ -80,20 +91,38 @@ const SettingsModal = ({
         reconnection: false,
       });
 
-      socket.on("connect", () => {
-        setTestResult({ success: true, message: "¡Conexión exitosa!" });
-        setIsTesting(false);
+      const cleanup = () => {
+        socket.off("connect");
+        socket.off("connect_error");
         socket.disconnect();
+      };
+
+      socket.on("connect", () => {
+        setTestResult({ 
+          success: true, 
+          message: "¡Conexión exitosa!",
+          data: { schema: schemaData, socketId: socket.id }
+        });
+        setIsTesting(false);
+        setShowResultModal(true);
+        cleanup();
       });
 
       socket.on("connect_error", (err) => {
-        setTestResult({ success: false, message: `Error: ${err.message}` });
+        setTestResult({ 
+          success: false, 
+          message: `Error Socket: ${err.message}. Pero API OK.`,
+          data: { schema: schemaData }
+        });
         setIsTesting(false);
-        socket.disconnect();
+        setShowResultModal(true);
+        cleanup();
       });
+
     } catch (err) {
       setTestResult({ success: false, message: `Error: ${err instanceof Error ? err.message : 'Error desconocido'}` });
       setIsTesting(false);
+      setShowResultModal(true);
     }
   };
 
@@ -101,6 +130,48 @@ const SettingsModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      {showResultModal && testResult && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40">
+           <div className={`w-full max-w-2xl rounded-lg p-6 shadow-2xl border border-border-subtle ${theme === 'dark' ? 'bg-bg-primary text-text-primary' : 'bg-white text-gray-900'}`}>
+              <h3 className={`text-lg font-bold mb-4 ${testResult.success ? 'text-brand-emerald' : 'text-red-500'}`}>
+                {testResult.success ? '✓ Conexión Verificada' : '✗ Fallo en la Conexión'}
+              </h3>
+              <div className="space-y-4">
+                 <div className="rounded bg-bg-secondary p-3 text-sm border border-border-subtle">
+                    <p className="font-semibold mb-1">Resultado:</p>
+                    <p className="text-text-secondary">{testResult.message}</p>
+                 </div>
+                 {testResult.data?.schema && (
+                    <div className="rounded bg-bg-secondary p-3 text-xs border border-border-subtle max-h-60 overflow-y-auto">
+                       <p className="font-semibold mb-2 text-brand-emerald">Esquema detectado:</p>
+                       <pre className="font-mono text-text-muted">
+                          {JSON.stringify(testResult.data.schema, null, 2)}
+                       </pre>
+                    </div>
+                 )}
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                 <button 
+                   onClick={() => setShowResultModal(false)}
+                   className="rounded bg-bg-secondary px-6 py-2 text-sm font-medium hover:bg-border-subtle transition-all"
+                 >
+                   Cerrar
+                 </button>
+                 {testResult.success && (
+                   <button 
+                     onClick={() => {
+                       onSave(tempApiConfig, tempSocketConfig);
+                       setShowResultModal(false);
+                     }}
+                     className="rounded bg-brand-emerald px-6 py-2 text-sm font-bold text-bg-primary hover:bg-brand-emerald-light transition-all"
+                   >
+                     Guardar y Aplicar
+                   </button>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
       <div className={`w-full max-w-4xl rounded-lg p-6 shadow-xl border border-border-subtle flex flex-col max-h-[90vh] ${theme === 'dark' ? 'bg-bg-primary text-text-primary' : 'bg-white text-gray-900'}`}>
         <h2 className="mb-4 text-xl font-bold">Configuración Completa</h2>
         
@@ -335,6 +406,16 @@ const SettingsModal = ({
             )}
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={() => {
+                if (confirm("¿Estás seguro de que deseas limpiar todos los datos de conexión?")) {
+                  onClear();
+                }
+              }}
+              className="rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-500/20 transition-all"
+            >
+              Limpiar Datos
+            </button>
             <button
               onClick={onClose}
               className="rounded bg-bg-secondary px-6 py-2 text-sm font-medium text-text-primary hover:bg-border-subtle transition-all"
