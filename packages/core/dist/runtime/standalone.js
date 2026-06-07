@@ -39,7 +39,7 @@ class StandaloneServer {
     constructor(schema, options = {}) {
         this.schema = schema;
         this.port = options.port || 3001;
-        this.jsonPath = options.jsonPath || '/json';
+        this.jsonPath = options.jsonPath || '/socket-docs/json';
     }
     /**
      * Update the schema being served.
@@ -52,37 +52,39 @@ class StandaloneServer {
         // Relative to dist/runtime/standalone.js
         const uiDistPath = path.resolve(__dirname, '../../ui-dist');
         this.server = http.createServer((req, res) => {
-            const url = req.url || '/';
-            console.log(`[SocketDocs] [Standalone] ${req.method} ${url}`);
-            // Serve JSON schema
-            if (url === this.jsonPath) {
+            const fullUrl = req.url || '/';
+            const [urlPath] = fullUrl.split('?');
+            // Normalize paths for comparison (remove trailing slashes)
+            const normalize = (p) => p === '/' ? p : p.replace(/\/+$/, '');
+            const reqPath = normalize(urlPath);
+            const jsonPath = normalize(this.jsonPath);
+            console.log(`[SocketDocs] [Standalone] ${req.method} ${urlPath} -> Mapping: ${reqPath}`);
+            // 1. Serve JSON schema (Highest priority)
+            if (reqPath === jsonPath || reqPath === '/json' || reqPath === '/socket-docs/json') {
                 console.log(`[SocketDocs] [Standalone] Serving schema...`);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.writeHead(200, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                });
                 res.end(JSON.stringify(this.schema));
                 return;
             }
-            // Serve assets
-            if (url.startsWith('/assets/')) {
-                const assetFile = url.replace('/assets/', '');
-                const filePath = path.join(uiDistPath, 'assets', assetFile);
-                if (fs.existsSync(filePath)) {
+            // 2. Try to serve as a static file from uiDistPath
+            if (reqPath !== '/') {
+                const filePath = path.join(uiDistPath, urlPath);
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
                     const ext = path.extname(filePath);
-                    const contentType = this.getContentType(ext);
-                    res.writeHead(200, { 'Content-Type': contentType });
+                    res.writeHead(200, { 'Content-Type': this.getContentType(ext) });
                     res.end(fs.readFileSync(filePath));
+                    return;
                 }
-                else {
-                    res.writeHead(404);
-                    res.end('Asset not found');
-                }
-                return;
             }
-            // Serve UI Index
+            // 3. Serve UI Index (Fallback for SPA routing)
             const indexPath = path.join(uiDistPath, 'index.html');
             if (fs.existsSync(indexPath)) {
                 let content = fs.readFileSync(indexPath, 'utf-8');
-                // Inject Standalone Configuration
-                // The UI uses SOCKET_DOCS_CONFIG to override default settings
                 const configScript = `
           <script>
             window.SOCKET_DOCS_CONFIG = {
@@ -92,13 +94,14 @@ class StandaloneServer {
             };
           </script>
         `;
-                content = content.replace('<head>', `<head>${configScript}`);
+                content = content.replace(/<head>/i, `<head>${configScript}`);
                 res.writeHead(200, { 'Content-Type': 'text/html' });
                 res.end(content);
             }
             else {
+                console.error(`[SocketDocs] [Standalone] UI not found at: ${indexPath}`);
                 res.writeHead(404);
-                res.end('UI not found. Build the UI package first.');
+                res.end(`UI not found at ${indexPath}. Build the UI package first.`);
             }
         });
         this.server.listen(this.port, () => {

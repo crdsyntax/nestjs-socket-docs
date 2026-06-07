@@ -66,22 +66,27 @@ class ASTScannerService {
         const args = decorator.getArguments();
         if (args.length === 0)
             return '/';
+        let namespace = '/';
         for (const arg of args) {
             if (arg.getKind() === ts_morph_1.SyntaxKind.StringLiteral) {
-                return arg.asKindOrThrow(ts_morph_1.SyntaxKind.StringLiteral).getLiteralValue();
+                namespace = arg.asKindOrThrow(ts_morph_1.SyntaxKind.StringLiteral).getLiteralValue();
             }
-            if (arg.getKind() === ts_morph_1.SyntaxKind.ObjectLiteralExpression) {
+            else if (arg.getKind() === ts_morph_1.SyntaxKind.ObjectLiteralExpression) {
                 const obj = arg.asKindOrThrow(ts_morph_1.SyntaxKind.ObjectLiteralExpression);
-                const namespace = this.getPropertyValue(obj, 'namespace') || this.getPropertyValue(obj, 'name');
-                if (namespace)
-                    return namespace;
+                const nsVal = this.getPropertyValue(obj, 'namespace') || this.getPropertyValue(obj, 'name');
+                if (nsVal)
+                    namespace = nsVal;
             }
         }
-        const firstArg = args[0];
-        if (firstArg.getKind() !== ts_morph_1.SyntaxKind.NumericLiteral) {
-            return firstArg.getText().replace(/['"]/g, '');
+        // If the only argument is a number (port), it's not a namespace
+        if (args.length === 1 && args[0].getKind() === ts_morph_1.SyntaxKind.NumericLiteral) {
+            return '/';
         }
-        return '/';
+        // Ensure it starts with /
+        if (namespace && !namespace.startsWith('/')) {
+            namespace = `/${namespace}`;
+        }
+        return namespace || '/';
     }
     getPath(cls) {
         const decorator = cls.getDecorator('WebSocketGateway');

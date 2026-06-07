@@ -8,5 +8,5 @@ interface GatewayPanelProps {
     expanded: Record<string, boolean>;
     onToggleExpand: (key: string) => void;
 }
-declare const GatewayPanel: ({ gateways, activeGatewayIdx, activeEventIdx, onSelectGateway, onSelectEvent, expanded, onToggleExpand, }: GatewayPanelProps) => import("react").JSX.Element;
+declare const GatewayPanel: ({ gateways, activeGatewayIdx, activeEventIdx, onSelectGateway, onSelectEvent, expanded, onToggleExpand, }: GatewayPanelProps) => import("react/jsx-runtime").JSX.Element;
 export default GatewayPanel;

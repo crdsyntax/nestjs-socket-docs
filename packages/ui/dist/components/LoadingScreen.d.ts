@@ -1,3 +1,2 @@
-import React from "react";
-declare const LoadingScreen: () => React.JSX.Element;
+declare const LoadingScreen: () => import("react/jsx-runtime").JSX.Element;
 export default LoadingScreen;

@@ -1,3 +1,4 @@
+/// <reference types="react" />
 import { ExpandedState, PayloadMap, SocketDocsData } from "../types";
 import { ApiConfig } from "../services/api.service";
 export interface UseSocketDocsOptions extends ApiConfig {

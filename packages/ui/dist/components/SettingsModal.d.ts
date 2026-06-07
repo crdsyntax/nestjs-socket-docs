@@ -1,4 +1,3 @@
-import React from "react";
 export interface ApiConfig {
     baseUrl: string;
     jsonPath: string;
@@ -27,11 +26,12 @@ interface SettingsModalProps {
     show: boolean;
     onClose: () => void;
     onSave: (api: ApiConfig, socket: SocketConfig) => void;
+    onClear: () => void;
     initialApiConfig: ApiConfig;
     initialSocketConfig: SocketConfig;
     isStandalone: boolean;
     theme: "dark" | "light";
     activeGatewayNamespace?: string;
 }
-declare const SettingsModal: ({ show, onClose, onSave, initialApiConfig, initialSocketConfig, isStandalone, theme, activeGatewayNamespace }: SettingsModalProps) => React.JSX.Element | null;
+declare const SettingsModal: ({ show, onClose, onSave, onClear, initialApiConfig, initialSocketConfig, isStandalone, theme, activeGatewayNamespace }: SettingsModalProps) => import("react/jsx-runtime").JSX.Element | null;
 export default SettingsModal;

@@ -1,4 +1,3 @@
-import React from "react";
 interface EventDetailsProps {
     gatewayName: string;
     eventName: string;
@@ -6,5 +5,5 @@ interface EventDetailsProps {
     description: string;
     auth?: 'JWT' | 'API_KEY' | 'BASIC' | 'NONE';
 }
-declare const EventDetails: ({ gatewayName, eventName, summary, description, auth }: EventDetailsProps) => React.JSX.Element;
+declare const EventDetails: ({ gatewayName, eventName, summary, description, auth }: EventDetailsProps) => import("react/jsx-runtime").JSX.Element;
 export default EventDetails;
