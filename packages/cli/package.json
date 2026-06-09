@@ -1,6 +1,6 @@
 {
   "name": "@crdsyntax/nestjs-socket-docs-cli",
-  "version": "2.3.6",
+  "version": "2.4.0",
   "description": "CLI for nestjs-socket-docs",
   "main": "dist/index.js",
   "bin": {
@@ -11,6 +11,9 @@
     "bin",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",

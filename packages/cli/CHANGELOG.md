@@ -1,5 +1,18 @@
 # @crdsyntax/nestjs-socket-docs-cli
 
+## 2.4.0
+
+### Minor Changes
+
+- otro cambio
+- e20e3f6: ajuste standalone
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies [e20e3f6]
+  - @crdsyntax/nestjs-socket-docs@2.4.0
+
 ## 2.3.6
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @crdsyntax/nestjs-socket-docs
 
+## 2.4.0
+
+### Minor Changes
+
+- otro cambio
+- e20e3f6: ajuste standalone
+
 ## 2.3.6
 
 ### Patch Changes
