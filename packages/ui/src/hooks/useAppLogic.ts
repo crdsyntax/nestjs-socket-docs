@@ -11,7 +11,9 @@ const STORAGE_KEYS = {
 export const useAppLogic = (data: SocketDocsData | null) => {
   const [activeGatewayIdx, setActiveGatewayIdx] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.GATEWAY_IDX);
-    return saved ? parseInt(saved) : -1;
+    const parsed = saved !== null ? parseInt(saved) : 0;
+    // Default to the first gateway (and coerce legacy -1) so the header reflects real server info
+    return !isNaN(parsed) && parsed >= 0 ? parsed : 0;
   });
 
   const [activeEventIdx, setActiveEventIdx] = useState(() => {

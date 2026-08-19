@@ -1,4 +1,5 @@
 import React from "react";
+import { discoverLocalServers, DiscoveredServer } from "../services/discovery.service";
 
 export interface ApiConfig {
   baseUrl: string;
@@ -54,6 +55,11 @@ const SettingsModal = ({
   const [isTesting, setIsTesting] = React.useState(false);
   const [testResult, setTestResult] = React.useState<{ success: boolean; message: string; data?: any } | null>(null);
   const [showResultModal, setShowResultModal] = React.useState(false);
+  const [isDiscovering, setIsDiscovering] = React.useState(false);
+  const [discoveredServers, setDiscoveredServers] = React.useState<DiscoveredServer[]>([]);
+  const [discoveryError, setDiscoveryError] = React.useState<string | null>(null);
+  const [hasDiscovered, setHasDiscovered] = React.useState(false);
+  const [authRequiredWarning, setAuthRequiredWarning] = React.useState(false);
 
   React.useEffect(() => {
     if (show) {
@@ -61,8 +67,72 @@ const SettingsModal = ({
       setTempSocketConfig(initialSocketConfig);
       setTestResult(null);
       setShowResultModal(false);
+      setDiscoveryError(null);
+      setAuthRequiredWarning(false);
+      // keep previous discoveredServers for convenience, but reset hasDiscovered if needed
     }
   }, [show, initialApiConfig, initialSocketConfig]);
+
+  // Proactively detect if the target gateway requires auth but no token is provided.
+  React.useEffect(() => {
+    if (!show) return;
+    const baseUrl = (tempApiConfig.baseUrl || window.location.origin).replace(/\/$/, "");
+    const jsonPath = tempApiConfig.jsonPath.startsWith("/") ? tempApiConfig.jsonPath : `/${tempApiConfig.jsonPath}`;
+    const ns = tempSocketConfig.namespace === "/" ? (activeGatewayNamespace ?? "/") : tempSocketConfig.namespace;
+    const targetNs = normalizedNs(ns);
+    const hasAuth = !!(tempSocketConfig.auth.token || tempSocketConfig.auth.userId);
+    if (!baseUrl || hasAuth) {
+      setAuthRequiredWarning(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${baseUrl}${jsonPath}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((schema) => {
+        if (cancelled || !schema) return;
+        const gateway = (schema?.gateways || []).find(
+          (g: any) => normalizedNs(g.namespace || "/") === targetNs
+        );
+        const requiresAuth = (gateway?.events || []).some(
+          (e: any) => e.auth && e.auth !== "NONE"
+        );
+        setAuthRequiredWarning(requiresAuth && !hasAuth);
+      })
+      .catch(() => {
+        /* ignore - the test itself will report errors */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [show, tempApiConfig.baseUrl, tempApiConfig.jsonPath, tempSocketConfig.namespace, tempSocketConfig.auth.token, tempSocketConfig.auth.userId, activeGatewayNamespace]);
+
+  const handleDiscover = async () => {
+    setIsDiscovering(true);
+    setDiscoveryError(null);
+    try {
+      const res = await discoverLocalServers();
+      setDiscoveredServers(res.servers);
+      setHasDiscovered(true);
+      if (res.servers.length === 0) {
+        setDiscoveryError('No se encontraron servidores locales con /socket-docs/json. Verifica que tu app NestJS esté corriendo con SocketDocsModule.setup().');
+      }
+    } catch (e) {
+      setDiscoveryError(e instanceof Error ? e.message : 'Error desconocido al escanear');
+      setHasDiscovered(true);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const applyDiscovered = (srv: DiscoveredServer) => {
+    setTempApiConfig(prev => ({
+      ...prev,
+      baseUrl: srv.baseUrl,
+      // En modo standalone el jsonPath está bloqueado, pero si el servidor descubierto usa el mismo path lo respetamos.
+      // Si no es standalone, adoptamos el jsonPath detectado.
+      jsonPath: isStandalone ? prev.jsonPath : srv.jsonPath,
+    }));
+  };
 
   const normalizedNs = (ns: string) => ns.startsWith("/") ? ns : `/${ns}`;
 
@@ -70,53 +140,139 @@ const SettingsModal = ({
     setIsTesting(true);
     setTestResult(null);
 
-    const baseUrl = tempApiConfig.baseUrl.replace(/\/$/, "");
+    // Ensure baseUrl is not empty - fallback to current origin
+    const baseUrl = (tempApiConfig.baseUrl || window.location.origin).replace(/\/$/, "");
     const jsonPath = tempApiConfig.jsonPath.startsWith("/") ? tempApiConfig.jsonPath : `/${tempApiConfig.jsonPath}`;
     
     try {
       // 1. Test API (Fetch Docs)
       const response = await fetch(`${baseUrl}${jsonPath}`);
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Respuesta no es JSON. Content-Type: ${contentType}`);
+      }
       const schemaData = await response.json();
 
       // 2. Test Socket
       const { io } = await import("socket.io-client");
       const ns = tempSocketConfig.namespace === "/" ? (activeGatewayNamespace ?? "/") : tempSocketConfig.namespace;
-      const socket = io(`${baseUrl}${normalizedNs(ns)}`, {
-        path: tempSocketConfig.path,
-        transports: tempSocketConfig.transports,
-        auth: tempSocketConfig.auth,
-        timeout: 5000,
-        forceNew: true,
-        reconnection: false,
-      });
+      const targetNs = normalizedNs(ns);
 
-      const cleanup = () => {
-        socket.off("connect");
-        socket.off("connect_error");
-        socket.disconnect();
-      };
+      // Detect if the target gateway requires auth but no token is provided
+      const gateway = (schemaData?.gateways || []).find(
+        (g: any) => normalizedNs(g.namespace || "/") === targetNs
+      );
+      const requiresAuth = (gateway?.events || []).some(
+        (e: any) => e.auth && e.auth !== "NONE"
+      );
+      const hasAuth = !!(tempSocketConfig.auth.token || tempSocketConfig.auth.userId);
 
-      socket.on("connect", () => {
-        setTestResult({ 
-          success: true, 
-          message: "¡Conexión exitosa!",
-          data: { schema: schemaData, socketId: socket.id }
+      await new Promise<void>((resolve) => {
+        const socket = io(`${baseUrl}${targetNs}`, {
+          path: tempSocketConfig.path,
+          transports: tempSocketConfig.transports,
+          auth: tempSocketConfig.auth,
+          timeout: 5000,
+          forceNew: true,
+          reconnection: false,
         });
-        setIsTesting(false);
-        setShowResultModal(true);
-        cleanup();
-      });
 
-      socket.on("connect_error", (err) => {
-        setTestResult({ 
-          success: false, 
-          message: `Error Socket: ${err.message}. Pero API OK.`,
-          data: { schema: schemaData }
+        let settled = false;
+
+        const cleanup = () => {
+          socket.off("connect");
+          socket.off("connect_error");
+          socket.off("disconnect");
+          socket.disconnect();
+        };
+
+        const fail = (message: string, extra?: any) => {
+          if (settled) return;
+          settled = true;
+          setTestResult({
+            success: false,
+            message,
+            data: { schema: schemaData, ...extra },
+          });
+          setIsTesting(false);
+          setShowResultModal(true);
+          cleanup();
+          resolve();
+        };
+
+        const succeed = (socketId?: string) => {
+          if (settled) return;
+          settled = true;
+          setTestResult({
+            success: true,
+            message: "¡Conexión exitosa!",
+            data: { schema: schemaData, socketId },
+          });
+          setIsTesting(false);
+          setShowResultModal(true);
+          cleanup();
+          resolve();
+        };
+
+        // Pre-warning: schema requires auth but none provided
+        if (requiresAuth && !hasAuth) {
+          // We still run the test, but the failure below will be more explicit
+          console.warn("[SocketDocs] Gateway requires auth but no token provided");
+        }
+
+        socket.on("connect", () => {
+          // Do NOT declare success immediately: the server may reject auth
+          // right after the transport handshake (e.g. 400 + disconnect).
+          // Give it a short grace period to surface a server-side rejection.
+          setTimeout(() => {
+            if (socket.connected) {
+              succeed(socket.id);
+            }
+            // If the server already disconnected us, the "disconnect" handler fired first.
+          }, 600);
         });
-        setIsTesting(false);
-        setShowResultModal(true);
-        cleanup();
+
+        socket.on("connect_error", (err: any) => {
+          const reason =
+            err?.message ||
+            err?.description ||
+            (typeof err === "string" ? err : "Error de conexión");
+          const serverMsg = err?.data?.message || err?.data || reason;
+          if (requiresAuth && !hasAuth) {
+            fail(`Autenticación requerida: falta el token. El servidor respondió: "${serverMsg}"`, {
+              authRequired: true,
+            });
+          } else {
+            fail(`Error Socket: ${reason}`, { serverError: err?.data });
+          }
+        });
+
+        socket.on("disconnect", (reason: string) => {
+          if (settled) return; // our own cleanup
+          // "io server disconnect" / "transport close" / "parse error" => server rejected us
+          if (reason === "io server disconnect" || reason === "transport close" || reason === "parse error") {
+            if (requiresAuth && !hasAuth) {
+              fail("Autenticación fallida: el servidor rechazó la conexión (token faltante o inválido).", {
+                authRequired: true,
+              });
+            } else {
+              fail(`El servidor rechazó la conexión: ${reason}. Verifica auth / path / namespace.`);
+            }
+          }
+          // "io client disconnect" is from our own cleanup -> ignore
+        });
+
+        // Hard safety timeout
+        setTimeout(() => {
+          if (!settled) {
+            if (requiresAuth && !hasAuth) {
+              fail("Tiempo de espera agotado. El gateway requiere autenticación; verifica el token.");
+            } else {
+              fail("Tiempo de espera agotado. El servidor no confirmó la conexión.");
+            }
+          }
+        }, 6000);
       });
 
     } catch (err) {
@@ -191,9 +347,16 @@ const SettingsModal = ({
                     type="text"
                     value={tempApiConfig.baseUrl}
                     onChange={(e) => setTempApiConfig({ ...tempApiConfig, baseUrl: e.target.value })}
-                    className={`w-full rounded border border-border-subtle p-2 text-sm outline-none transition-colors focus:border-brand-emerald ${theme === 'dark' ? 'bg-bg-secondary' : 'bg-gray-100'}`}
+                    className={`w-full rounded border p-2 text-sm outline-none transition-colors ${
+                      !tempApiConfig.baseUrl 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : 'border-border-subtle focus:border-brand-emerald'
+                    } ${theme === 'dark' ? 'bg-bg-secondary' : 'bg-gray-100'}`}
                     placeholder="http://localhost:3000"
                   />
+                  {!tempApiConfig.baseUrl && (
+                    <p className="mt-1 text-[10px] text-red-500">La Base URL es requerida</p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-text-muted">
@@ -209,8 +372,68 @@ const SettingsModal = ({
                 </div>
               </div>
 
+                {/* Local discovery */}
+                <div className={`rounded border p-3 ${theme === 'dark' ? 'bg-bg-secondary/50 border-border-subtle' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-text-primary">Servidores locales</p>
+                      <p className="text-[11px] text-text-muted">Detecta apps NestJS con SocketDocs en tu máquina</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDiscover}
+                      disabled={isDiscovering}
+                      className={`shrink-0 rounded px-3 py-1.5 text-xs font-bold transition-all ${isDiscovering ? 'bg-bg-secondary text-text-muted cursor-wait' : 'bg-brand-emerald text-bg-primary hover:bg-brand-emerald-light'}`}
+                    >
+                      {isDiscovering ? 'Escaneando…' : 'Detectar'}
+                    </button>
+                  </div>
+
+                  {isDiscovering && (
+                    <p className="mt-2 text-[11px] text-text-muted animate-pulse">Escaneando puertos locales (3000, 4000, 5000, 8080, …)</p>
+                  )}
+
+                  {!isDiscovering && hasDiscovered && discoveredServers.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-[11px] font-medium text-brand-emerald">{discoveredServers.length} servidor{discoveredServers.length !== 1 ? 'es' : ''} encontrado{discoveredServers.length !== 1 ? 's' : ''}:</p>
+                      {discoveredServers.map(srv => {
+                        const isSelected = tempApiConfig.baseUrl === srv.baseUrl && tempApiConfig.jsonPath === srv.jsonPath;
+                        return (
+                          <button
+                            key={`${srv.baseUrl}${srv.jsonPath}`}
+                            type="button"
+                            onClick={() => applyDiscovered(srv)}
+                            className={`flex w-full items-center justify-between rounded border px-3 py-2 text-left transition-colors ${isSelected ? 'border-brand-emerald bg-brand-emerald/10' : 'border-border-subtle hover:border-brand-emerald/50 hover:bg-bg-secondary'}`}
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-text-primary">{srv.baseUrl}<span className="font-normal text-text-muted">{srv.jsonPath}</span></p>
+                              <p className="text-[11px] text-text-muted">{srv.gateways} gateway{srv.gateways !== 1 ? 's' : ''} · {srv.latencyMs}ms · :{srv.port}</p>
+                            </div>
+                            <span className={`ml-2 shrink-0 rounded px-2 py-0.5 text-[10px] font-bold ${isSelected ? 'bg-brand-emerald text-bg-primary' : 'bg-bg-surface border border-border-subtle text-text-muted'}`}>
+                              {isSelected ? 'Seleccionado' : 'Usar'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {!isDiscovering && hasDiscovered && discoveredServers.length === 0 && discoveryError && (
+                    <p className="mt-2 rounded bg-red-500/10 px-2 py-1.5 text-[11px] text-red-500 border border-red-500/20">{discoveryError}</p>
+                  )}
+
+                  {!hasDiscovered && !isDiscovering && (
+                    <p className="mt-2 text-[11px] text-text-muted">Haz clic en Detectar para escanear puertos locales y autocompletar la Base URL.</p>
+                  )}
+                </div>
+
               <section>
                 <h3 className="mb-3 text-sm font-semibold uppercase text-brand-emerald tracking-wider">Autenticación</h3>
+                {authRequiredWarning && (
+                  <div className="mb-3 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-500">
+                    ⚠️ Este gateway requiere autenticación. Completa el Token (o User ID) o la conexión será rechazada con 400.
+                  </div>
+                )}
                 <div className="grid gap-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-text-muted">JWT Token</label>
@@ -423,8 +646,20 @@ const SettingsModal = ({
               Cancelar
             </button>
             <button
-              onClick={() => onSave(tempApiConfig, tempSocketConfig)}
-              className="rounded bg-brand-emerald px-6 py-2 text-sm font-bold text-bg-primary hover:bg-brand-emerald-light shadow-lg shadow-brand-emerald/20 transition-all active:scale-95"
+              onClick={() => {
+                // Ensure baseUrl is not empty before saving
+                const configToSave = {
+                  ...tempApiConfig,
+                  baseUrl: tempApiConfig.baseUrl || window.location.origin,
+                };
+                onSave(configToSave, tempSocketConfig);
+              }}
+              disabled={!tempApiConfig.baseUrl && !tempApiConfig.jsonPath}
+              className={`rounded px-6 py-2 text-sm font-bold shadow-lg transition-all active:scale-95 ${
+                !tempApiConfig.baseUrl && !tempApiConfig.jsonPath
+                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed shadow-none'
+                  : 'bg-brand-emerald text-bg-primary hover:bg-brand-emerald-light shadow-brand-emerald/20'
+              }`}
             >
               Guardar Configuración
             </button>

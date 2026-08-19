@@ -1,5 +1,14 @@
 # @crdsyntax/nestjs-socket-docs-ui
 
+## 2.5.0
+
+### Minor Changes
+
+- Detección de servidores locales en el modal de configuración (botón "Detectar")
+- Feedback de autenticación faltante y validación de conexión más robusta
+- El header refleja host/namespace/path del servidor conectado
+- Removido el texto "Hecho con 💚 para NestJS"
+
 ## 2.4.0
 
 ### Minor Changes
@@ -55,8 +64,6 @@
 
 - se arreglo la ui y vamos a ver si compila y se via npm
 
-<<<<<<< HEAD
-
 ## 4.0.0
 
 ### Major Changes
@@ -74,10 +81,6 @@
 ### Major Changes
 
 - c6b8619: fix names
-
-=======
-
-> > > > > > > parent of 27cd563 (fix)
 
 ## 1.0.0
 

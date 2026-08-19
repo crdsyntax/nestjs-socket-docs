@@ -105,10 +105,7 @@ const Sidebar = ({
         </button>
         
         {!isCollapsed && (
-          <>
-            <p>{translations.common.socketDocs} {translations.common.v1}</p>
-            <p>{translations.common.madeWith}</p>
-          </>
+          <p>{translations.common.socketDocs} {translations.common.v1}</p>
         )}
       </div>
     </aside>

@@ -1,5 +1,16 @@
 # @crdsyntax/nestjs-socket-docs-cli
 
+## 2.5.0
+
+### Minor Changes
+
+- Documentación del comando `dev` para el modo standalone
+
+### Patch Changes
+
+- Updated dependencies
+  - @crdsyntax/nestjs-socket-docs@2.5.0
+
 ## 2.4.0
 
 ### Minor Changes
@@ -90,8 +101,6 @@
 - Updated dependencies
   - @crdsyntax/nestjs-socket-docs@1.0.0
 
-<<<<<<< HEAD
-
 ## 4.0.0
 
 ### Major Changes
@@ -109,10 +118,6 @@
 ### Major Changes
 
 - c6b8619: fix names
-
-=======
-
-> > > > > > > parent of 27cd563 (fix)
 
 ## 1.0.0
 

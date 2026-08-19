@@ -8,7 +8,6 @@ export const translations = {
     disconnected: "Desconectado",
     searchPlaceholder: "Buscar eventos...",
     exportContract: "Exportar contrato",
-    madeWith: "Hecho con 💚 para NestJS",
   },
   event: {
     type: "EVENT",

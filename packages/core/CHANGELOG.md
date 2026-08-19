@@ -1,5 +1,16 @@
 # @crdsyntax/nestjs-socket-docs
 
+## 2.5.0
+
+### Minor Changes
+
+- Standalone: detección de servidores locales (endpoint `/socket-docs/servers`)
+- Standalone: protección contra path traversal en archivos estáticos
+- Standalone: manejo de errores del servidor (puerto en uso) y `stop()` asíncrono
+- Standalone: más tipos MIME (woff, woff2, ttf, ico, gif, etc.)
+- UI: el header y el modal de configuración reflejan host/namespace/path reales del servidor
+- UI: feedback de autenticación faltante al probar conexión
+
 ## 2.4.0
 
 ### Minor Changes
@@ -61,8 +72,6 @@
 
 - se arreglo la ui y vamos a ver si compila y se via npm
 
-<<<<<<< HEAD
-
 ## 4.0.0
 
 ### Major Changes
@@ -80,10 +89,6 @@
 ### Major Changes
 
 - c6b8619: fix names
-
-=======
-
-> > > > > > > parent of 27cd563 (fix)
 
 ## 1.0.0
 

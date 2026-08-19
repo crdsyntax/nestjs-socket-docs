@@ -34,6 +34,29 @@ socket-docs init
 
 - `-p, --project <path>`: Ruta al archivo `tsconfig.json` (por defecto: `tsconfig.json`).
 
+### `dev`
+
+Inicia un servidor de desarrollo standalone para probar la UI sin una aplicación NestJS en ejecución.
+
+```bash
+socket-docs dev
+```
+
+#### Opciones:
+
+- `-p, --project <path>`: Ruta al archivo `tsconfig.json` (por defecto: `tsconfig.json`).
+- `-port, --port <number>`: Puerto del servidor (por defecto: `3001`).
+
+#### Ejemplo:
+
+```bash
+# Iniciar en puerto personalizado
+socket-docs dev --port 4000
+
+# Especificar tsconfig personalizado
+socket-docs dev -p ./tsconfig.build.json
+```
+
 ## Funcionamiento
 
 1. **Escaneo AST**: Analiza el código fuente para detectar decoradores de Gateways.

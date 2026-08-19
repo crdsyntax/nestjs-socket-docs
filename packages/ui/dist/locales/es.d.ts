@@ -8,7 +8,6 @@ export declare const translations: {
         disconnected: string;
         searchPlaceholder: string;
         exportContract: string;
-        madeWith: string;
     };
     event: {
         type: string;

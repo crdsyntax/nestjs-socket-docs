@@ -10,6 +10,7 @@ import SettingsModal, { ApiConfig, SocketConfig } from "./components/SettingsMod
 import useSocketClient from "./hooks/useSocketClient";
 import useSocketDocs from "./hooks/useSocketDocs";
 import { useAppLogic } from "./hooks/useAppLogic";
+import { discoverLocalServers, DiscoveredServer } from "./services/discovery.service";
 
 const STORAGE_KEYS = {
   API: "socket_docs_api_config",
@@ -18,6 +19,8 @@ const STORAGE_KEYS = {
 
 interface SocketDocsWindow extends Window {
   SOCKET_DOCS_CONFIG?: {
+    standalone?: boolean;
+    discoveryEnabled?: boolean;
     api?: Partial<ApiConfig>;
     socket?: Partial<SocketConfig>;
   };
@@ -26,7 +29,13 @@ interface SocketDocsWindow extends Window {
 const App = () => {
   const isStandalone = React.useMemo(() => {
     const configWindow = (window as unknown as SocketDocsWindow).SOCKET_DOCS_CONFIG || {};
-    return !!configWindow.api?.jsonPath || !window.location.pathname.includes('socket-docs');
+    // Standalone mode is detected when:
+    // 1. The server explicitly injects a standalone flag, OR
+    // 2. A custom jsonPath is provided via server config (not default), OR
+    // 3. The pathname doesn't contain 'socket-docs' (integrated mode uses /socket-docs route)
+    return !!configWindow.standalone || 
+           (!!configWindow.api?.jsonPath && configWindow.api.jsonPath !== '/socket-docs/json') ||
+           !window.location.pathname.includes('socket-docs');
   }, []);
 
   const [apiConfig, setApiConfig] = React.useState<ApiConfig>(() => {
@@ -102,6 +111,8 @@ const App = () => {
   });
 
   const [showSettings, setShowSettings] = React.useState(false);
+  const [discovered, setDiscovered] = React.useState<DiscoveredServer[] | null>(null);
+  const [isDiscovering, setIsDiscovering] = React.useState(false);
 
   const schemaConfig = React.useMemo(() => {
     return apiConfig;
@@ -186,9 +197,14 @@ const App = () => {
   ]);
 
   const handleSaveSettings = (newApi: ApiConfig, newSocket: SocketConfig) => {
-    localStorage.setItem(STORAGE_KEYS.API, JSON.stringify(newApi));
+    // Ensure baseUrl is not empty - fallback to current origin
+    const validatedApi = {
+      ...newApi,
+      baseUrl: newApi.baseUrl || window.location.origin,
+    };
+    localStorage.setItem(STORAGE_KEYS.API, JSON.stringify(validatedApi));
     localStorage.setItem(STORAGE_KEYS.SOCKET, JSON.stringify(newSocket));
-    setApiConfig(newApi);
+    setApiConfig(validatedApi);
     setSocketConfig(newSocket);
     setShowSettings(false);
     window.location.reload();
@@ -231,12 +247,28 @@ const App = () => {
 
   if (error) {
     const failedUrl = (error as any).config?.url || apiConfig.jsonPath;
+    const handleDiscoverFromError = async () => {
+      setIsDiscovering(true);
+      try {
+        const res = await discoverLocalServers();
+        setDiscovered(res.servers);
+        if (res.servers.length === 1) {
+          // auto-apply single result
+          const srv = res.servers[0];
+          const next = { ...apiConfig, baseUrl: srv.baseUrl, jsonPath: srv.jsonPath };
+          localStorage.setItem(STORAGE_KEYS.API, JSON.stringify(next));
+          window.location.reload();
+        }
+      } finally {
+        setIsDiscovering(false);
+      }
+    };
     return (
-      <div className={`flex h-screen flex-col items-center justify-center gap-4 ${theme === 'dark' ? 'bg-bg-primary text-text-primary' : 'bg-white text-gray-900'}`}>
+      <div className={`flex h-screen flex-col items-center justify-center gap-4 p-4 ${theme === 'dark' ? 'bg-bg-primary text-text-primary' : 'bg-white text-gray-900'}`}>
         <h1 className="text-2xl font-bold text-red-500">Error loading Socket Docs</h1>
-        <p className="text-text-muted">{error.message}</p>
+        <p className="text-text-muted text-center max-w-lg">{error.message}</p>
         <p className="text-xs text-text-muted opacity-50">URL: {failedUrl}</p>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap justify-center">
           <button 
             onClick={() => setShowSettings(true)}
             className="px-6 py-2 bg-bg-surface border border-border-subtle rounded-md font-medium hover:bg-border-subtle transition-colors"
@@ -249,7 +281,40 @@ const App = () => {
           >
             Reintentar
           </button>
+          {isStandalone && (
+            <button
+              onClick={handleDiscoverFromError}
+              disabled={isDiscovering}
+              className="px-6 py-2 bg-bg-secondary border border-brand-emerald/30 rounded-md font-bold text-brand-emerald hover:bg-brand-emerald/10 transition-colors disabled:opacity-50"
+            >
+              {isDiscovering ? 'Buscando…' : 'Detectar servidores locales'}
+            </button>
+          )}
         </div>
+        {isStandalone && discovered && discovered.length > 0 && (
+          <div className="mt-2 w-full max-w-lg rounded border border-border-subtle bg-bg-secondary p-3">
+            <p className="mb-2 text-xs font-semibold text-brand-emerald">Servidores encontrados:</p>
+            <div className="space-y-2">
+              {discovered.map(srv => (
+                <button
+                  key={`${srv.baseUrl}${srv.jsonPath}`}
+                  onClick={() => {
+                    const next = { ...apiConfig, baseUrl: srv.baseUrl, jsonPath: srv.jsonPath };
+                    localStorage.setItem(STORAGE_KEYS.API, JSON.stringify(next));
+                    window.location.reload();
+                  }}
+                  className="flex w-full items-center justify-between rounded border border-border-subtle px-3 py-2 text-left hover:border-brand-emerald/50 hover:bg-bg-primary transition-colors"
+                >
+                  <span className="text-sm font-medium">{srv.baseUrl}<span className="text-text-muted font-normal">{srv.jsonPath}</span></span>
+                  <span className="text-xs text-text-muted">{srv.gateways} gateways · :{srv.port}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {isStandalone && discovered && discovered.length === 0 && (
+          <p className="text-xs text-text-muted max-w-lg text-center">No se encontraron servidores locales. Asegúrate de que tu app NestJS esté corriendo con <code className="px-1 py-0.5 bg-bg-secondary rounded">SocketDocsModule.setup(app)</code> y que el puerto esté accesible.</p>
+        )}
         <SettingsModal
           show={showSettings}
           onClose={() => setShowSettings(false)}
@@ -288,7 +353,11 @@ const App = () => {
       <main className="flex flex-1 flex-col bg-bg-secondary">
         <MainHeader
           connected={activeGateway ? !!connected[activeGateway.name] : false}
-          gatewayPath={activeGateway ? `${apiConfig.baseUrl.replace(/https?:\/\//, '')}${activeGateway.path}` : "ws://localhost:3000"}
+          gatewayPath={
+            activeGateway
+              ? `${apiConfig.baseUrl.replace(/https?:\/\//, '')}${activeGateway.path}`
+              : `${apiConfig.baseUrl.replace(/https?:\/\//, '')}${socketConfig.path || "/socket.io"}`
+          }
           namespace={socketConfig.namespace !== "/" ? socketConfig.namespace : (activeGateway?.namespace || "/")}
           namespaces={availableNamespaces}
           path={socketConfig.path !== "/socket.io" ? socketConfig.path : (activeGateway?.path || "/socket.io")}
